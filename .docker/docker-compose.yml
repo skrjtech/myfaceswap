@@ -1,0 +1,22 @@
+version: '3.9'
+services:
+  app:
+    tty: true
+    build:
+      context: ../.docker
+      dockerfile: Dockerfile
+    image: skrjtech/faceswap:latest
+    container_name: faceswap_container
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - DISPLAY=$DISPLAY
+      - QT_X11_NO_MITSHM=1
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ..:/ws
+    ports:
+      - 8888:8888
