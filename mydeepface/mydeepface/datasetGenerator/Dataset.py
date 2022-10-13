@@ -22,7 +22,7 @@ class FaseDatasetSquence(torch.utils.data.Dataset):
             _A = sorted(glob.glob(os.path.join(path, filterA, dirA + '/*')))
             _B = sorted(glob.glob(os.path.join(path, filterB, dirB + '/*')))
             self.filterListA += _A[: -remove_num]
-            self.filterListA += _B[: -remove_num]
+            self.filterListB += _B[: -remove_num]
         self.filterListANum = len(self.filterListA)
         self.filterListBNum = len(self.filterListB)
         
