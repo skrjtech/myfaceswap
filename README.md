@@ -33,3 +33,7 @@ Working, please wait!
 # !!!Attetion!!!
 著作権の侵害に用いるのやめましょー！\
 ライセンスを読みになった上でご使用くださいませー！
+
+# Reference
+[[1] pytorchによる画像生成/画像変換のためのGANディープラーニング実装ハンドブック](https://github.com/ayukat1016/gan_sample)
+[![image](https://www.shuwasystem.co.jp//images/book/560939.jpg?raw=true)](https://www.shuwasystem.co.jp/book/9784798062297.html)
