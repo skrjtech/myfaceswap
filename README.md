@@ -38,4 +38,4 @@ Working, please wait!
 [[1] pytorchによる画像生成/画像変換のためのGANディープラーニング実装ハンドブック](https://github.com/ayukat1016/gan_sample)
 [![image](https://www.shuwasystem.co.jp//images/book/560939.jpg?raw=true)](https://www.shuwasystem.co.jp/book/9784798062297.html) \
 [[2] つくりながら学ぶ! PyTorchによる発展ディープラーニング](https://github.com/YutaroOgawa/pytorch_advanced)
-[![image](https://github.com/YutaroOgawa/pytorch_advanced/blob/master/etc/pytorch_advanced.png?raw=true)](https://book.mynavi.jp/ec/products/detail/id=104855)
+[![image](https://book.mynavi.jp/files/topics/104855_ext_06_0.jpg?v=1562849209?raw=true)](https://book.mynavi.jp/ec/products/detail/id=104855)
