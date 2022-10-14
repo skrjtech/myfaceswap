@@ -1,1 +1,1 @@
-from mydeepface.datasetGenerator.Dataset import FaseDatasetSquence
+from mydeepface.datasetGenerator.Dataset import FaceDatasetSquence
