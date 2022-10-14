@@ -30,7 +30,7 @@ Working, please wait!
 # LICENCE
 ちゃんと読んで！
 
-# !!!Attetion!!!
+# ![(注意)](https://illust8.com/wp-content/uploads/2018/08/mark_chuui_illust_904-768x672.png) Attetion ![(注意)](https://illust8.com/wp-content/uploads/2018/08/mark_chuui_illust_904-768x672.png)
 著作権の侵害になるようなことはやめましょー！\
 ライセンスを読みになった上でご使用くださいませー！
 
