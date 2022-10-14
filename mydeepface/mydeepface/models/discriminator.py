@@ -1,5 +1,5 @@
 import torch
-from modelbase import Flatten
+from mydeepface.models.modelbase import Flatten
 
 class Discriminator(torch.nn.Module):
     def __init__(self, input_nc):
