@@ -1,5 +1,4 @@
 import argparse
-from ast import arg
 
 class Args:
     def __init__(self, args) -> None:

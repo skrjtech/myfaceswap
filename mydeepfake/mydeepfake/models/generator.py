@@ -1,5 +1,5 @@
 import torch
-from mydeepface.models.generator import ResidualBlock
+from mydeepfake.models.generator import ResidualBlock
 
 class Generator(torch.nn.Module):
     def __init__(self, input_nc, output_nc, n_residual_blocks=9):
