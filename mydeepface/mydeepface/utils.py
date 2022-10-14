@@ -1,4 +1,3 @@
-from email.mime import image
 import torch
 import numpy as np
 from PIL import Image
