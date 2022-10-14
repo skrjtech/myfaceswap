@@ -1,5 +1,5 @@
 import torch
-from modelbase import ConvUnit, UpLayer, DownLayer, OutConv
+from mydeepface.models.modelbase import ConvUnit, UpLayer, DownLayer, OutConv
 
 class Predictor(torch.nn.Module):
     def __init__(self, input_nc, output_nc):
