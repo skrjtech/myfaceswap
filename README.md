@@ -30,7 +30,7 @@ Working, please wait!
 # LICENCE
 ちゃんと読んで！
 
-# <img src="https://illust8.com/wp-content/uploads/2018/08/mark_chuui_illust_904-768x672.png" width="50%">ATTENTION<img src="https://illust8.com/wp-content/uploads/2018/08/mark_chuui_illust_904-768x672.png" width="50%" > 
+# <img src="https://illust8.com/wp-content/uploads/2018/08/mark_chuui_illust_904-768x672.png" width="5%">ATTENTION<img src="https://illust8.com/wp-content/uploads/2018/08/mark_chuui_illust_904-768x672.png" width="5%" > 
 著作権の侵害になるようなことはやめましょー！\
 ライセンスを読みになった上でご使用くださいませー！
 
