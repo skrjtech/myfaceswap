@@ -6,7 +6,7 @@ import torch
 import torchvision
 from PIL import Image
 
-class FaseDatasetSquence(torch.utils.data.Dataset):
+class FaceDatasetSquence(torch.utils.data.Dataset):
     def __init__(self, path: str, transforms: torchvision.transforms=None, unaligned: bool=False, mode: str='train', filterA: str='fadg0/video/', filterB: str='faks0/video', skip: int=0) -> None:
         super().__init__()
         self.transform = torchvision.transforms.Compose(transforms)
