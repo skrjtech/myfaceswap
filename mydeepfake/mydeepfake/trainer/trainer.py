@@ -121,6 +121,7 @@ def train():
             loss_PG.backward()
             opt_pg.step()
 
+            # Input Tensor
             fake_a1_clone = fake_a1.clone()
             fake_a2_clone = fake_a2.clone()
             fake_a3_clone = fake_a3.clone()
