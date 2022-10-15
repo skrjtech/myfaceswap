@@ -1,4 +1,5 @@
 import torch
+import random
 import numpy as np
 from PIL import Image
 
@@ -56,4 +57,4 @@ class ReplayBuffer():
                     self.data[i] = element
                 else:
                     to_return.append(element)
-        return Variable(torch.cat(to_return))
+        return torch.autograd.Variable(torch.cat(to_return))
