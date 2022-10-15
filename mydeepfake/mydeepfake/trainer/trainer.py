@@ -92,71 +92,33 @@ def train():
             loss_PG = 0.
 
             # Domain A to B
-            same_b1 = G_A2B(real_B1)
-            loss_indetity_B = criterion_identity(same_b1, real_B1) * id_loss_rate
-            loss_PG += loss_indetity_B
+            same_b1 = G_A2B(real_B1); loss_indetity_B = criterion_identity(same_b1, real_B1) * id_loss_rate; loss_PG += loss_indetity_B
             # Domain B to A
-            same_a1 = G_B2A(real_A1)
-            loss_indetity_A = criterion_identity(same_a1, real_A1) * id_loss_rate
-            loss_PG += loss_indetity_A
-
+            same_a1 = G_B2A(real_A1); loss_indetity_A = criterion_identity(same_a1, real_A1) * id_loss_rate; loss_PG += loss_indetity_A
             # Gan 
-            fake_b1 = G_A2B(real_A1)
-            pred_fake_b1 = D_B(fake_b1)
-            loss_gan_A2B_1 = criterion_gan(pred_fake_b1, target_real) * id_loss_rate
-            loss_PG += loss_gan_A2B_1
-
-            fake_b2 = G_A2B(real_A2)
-            pred_fake_b2 = D_B(fake_b2)
-            loss_gan_A2B_2 = criterion_gan(pred_fake_b2, target_real) * id_loss_rate
-            loss_PG += loss_gan_A2B_2
-
-            fake_b3 = G_A2B(real_A3)
-            pred_fake_b3 = D_B(fake_b3)
-            loss_gan_A2B_3 = criterion_gan(pred_fake_b3, target_real) * id_loss_rate
-            loss_PG += loss_gan_A2B_3
-
-            fake_a1 = G_A2B(real_B1)
-            pred_fake_a1 = D_B(fake_a1)
-            loss_gan_B2A_1 = criterion_gan(pred_fake_a1, target_real) * id_loss_rate
-            loss_PG += loss_gan_B2A_1
-
-            fake_a2 = G_A2B(real_B2)
-            pred_fake_a2 = D_B(fake_a2)
-            loss_gan_B2A_2 = criterion_gan(pred_fake_a2, target_real) * id_loss_rate
-            loss_PG += loss_gan_B2A_2
-
-            fake_a3 = G_A2B(real_A3)
-            pred_fake_a3 = D_B(fake_a3)
-            loss_gan_B2A_3 = criterion_gan(pred_fake_a3, target_real) * id_loss_rate
-            loss_PG += loss_gan_B2A_3
-
+            fake_b1 = G_A2B(real_A1); pred_fake_b1 = D_B(fake_b1)
+            fake_b2 = G_A2B(real_A2); pred_fake_b2 = D_B(fake_b2)
+            fake_b3 = G_A2B(real_A3); pred_fake_b3 = D_B(fake_b3)
+            fake_a1 = G_A2B(real_B1); pred_fake_a1 = D_B(fake_a1)
+            fake_a2 = G_A2B(real_B2); pred_fake_a2 = D_B(fake_a2)
+            fake_a3 = G_A2B(real_B3); pred_fake_a3 = D_B(fake_a3)
+            loss_gan_A2B_1 = criterion_gan(pred_fake_b1, target_real) * id_loss_rate; loss_PG += loss_gan_A2B_1
+            loss_gan_A2B_2 = criterion_gan(pred_fake_b2, target_real) * id_loss_rate; loss_PG += loss_gan_A2B_2
+            loss_gan_A2B_3 = criterion_gan(pred_fake_b3, target_real) * id_loss_rate; loss_PG += loss_gan_A2B_3
+            loss_gan_B2A_1 = criterion_gan(pred_fake_a1, target_real) * id_loss_rate; loss_PG += loss_gan_B2A_1
+            loss_gan_B2A_2 = criterion_gan(pred_fake_a2, target_real) * id_loss_rate; loss_PG += loss_gan_B2A_2
+            loss_gan_B2A_3 = criterion_gan(pred_fake_a3, target_real) * id_loss_rate; loss_PG += loss_gan_B2A_3
             # Cycle consistency loss
-            fake_b12 = torch.cat((fake_b1, fake_b2), dim=1)
-            fake_b3_pred = P_B(fake_b12)
-            rec_a3 = G_B2A(fake_b3_pred)
-            loss_resycle_aba = criterion_recycle(rec_a3, real_A3) * id_loss_rate
-            loss_PG += loss_resycle_aba
-
-            fake_a12 = torch.cat((fake_a1, fake_a2), dim=1)
-            fake_a3_pred = P_A(fake_a12)
-            rec_b3 = G_A2B(fake_a3_pred)
-            loss_resycle_bab = criterion_recycle(rec_b3, real_B3) * id_loss_rate
-            loss_PG += loss_resycle_bab
-
+            fake_b12 = torch.cat((fake_b1, fake_b2), dim=1); fake_b3_pred = P_B(fake_b12); rec_a3 = G_B2A(fake_b3_pred)
+            fake_a12 = torch.cat((fake_a1, fake_a2), dim=1); fake_a3_pred = P_A(fake_a12); rec_b3 = G_A2B(fake_a3_pred)
+            loss_resycle_aba = criterion_recycle(rec_a3, real_A3) * id_loss_rate; loss_PG += loss_resycle_aba
+            loss_resycle_bab = criterion_recycle(rec_b3, real_B3) * id_loss_rate; loss_PG += loss_resycle_bab
             # Recurrent loss
-            real_a12 = torch.cat((real_A1, real_A2), dim=1)
-            pred_a3 = P_A(real_a12)
-            loss_rec_a = criterion_recurrent(pred_a3, real_A3) * recu_loss_rate
-            loss_PG += loss_rec_a
-
-            real_b12 = torch.cat((real_B1, real_B2), dim=1)
-            pred_b3 = P_B(real_b12)
-            loss_rec_b = criterion_recurrent(pred_b3, real_B3) * recu_loss_rate
-            loss_PG += loss_rec_b
-
+            real_a12 = torch.cat((real_A1, real_A2), dim=1); pred_a3 = P_A(real_a12)
+            real_b12 = torch.cat((real_B1, real_B2), dim=1); pred_b3 = P_B(real_b12)
+            loss_rec_a = criterion_recurrent(pred_a3, real_A3) * recu_loss_rate; loss_PG += loss_rec_a
+            loss_rec_b = criterion_recurrent(pred_b3, real_B3) * recu_loss_rate; loss_PG += loss_rec_b
             loss_PG.backward()
-
             opt_pg.step()
 
             fake_a1_clone = fake_a1.clone()
@@ -174,32 +136,30 @@ def train():
             recovered_A1 = G_B2A(fake_b1_clone)
             recovered_B1 = G_A2B(fake_a1_clone)
 
-            opt_d_a.zero_grad()
-
             loss_d_a = 0.
-
-            pred_real_a1 = D_A(real_A1)
-            pred_real_a2 = D_A(real_A2)
-            pred_real_a3 = D_A(real_A3)
-            loss_d_real_a1 = criterion_gan(pred_real_a1, target_real); loss_d_a += loss_d_real_a1
-            loss_d_real_a2 = criterion_gan(pred_real_a2, target_real); loss_d_a += loss_d_real_a2
-            loss_d_real_a3 = criterion_gan(pred_real_a3, target_real); loss_d_a += loss_d_real_a3
-
-            fake_a1 = fakeAbuffer.push_and_pop(fake_a1)
-            pred_fake_a1 = D_A(fake_a1.detach())
+            opt_d_a.zero_grad()
+            pred_real_a1 = D_A(real_A1); loss_d_real_a1 = criterion_gan(pred_real_a1, target_real); loss_d_a += loss_d_real_a1
+            pred_real_a2 = D_A(real_A2); loss_d_real_a2 = criterion_gan(pred_real_a2, target_real); loss_d_a += loss_d_real_a2
+            pred_real_a3 = D_A(real_A3); loss_d_real_a3 = criterion_gan(pred_real_a3, target_real); loss_d_a += loss_d_real_a3
+            fake_a1 = fakeAbuffer.push_and_pop(fake_a1); pred_fake_a1 = D_A(fake_a1.detach())
+            fake_a2 = fakeAbuffer.push_and_pop(fake_a2); pred_fake_a2 = D_A(fake_a2.detach())
+            fake_a3 = fakeAbuffer.push_and_pop(fake_a3); pred_fake_a3 = D_A(fake_a3.detach())
             loss_d_fake_a1 = criterion_gan(pred_fake_a1, target_fake); loss_d_a += loss_d_fake_a1
-            fake_a2 = fakeAbuffer.push_and_pop(fake_a2)
-            pred_fake_a2 = D_A(fake_a2.detach())
             loss_d_fake_a2 = criterion_gan(pred_fake_a2, target_fake); loss_d_a += loss_d_fake_a2
-            fake_a3 = fakeAbuffer.push_and_pop(fake_a3)
-            pred_fake_a3 = D_A(fake_a3.detach())
             loss_d_fake_a3 = criterion_gan(pred_fake_a3, target_fake); loss_d_a += loss_d_fake_a3
-
             loss_d_a = loss_d_a * 0.5
             loss_d_a.backward()
-
             opt_d_a.step()
 
+            loss_d_b = 0.
             opt_d_b.zero_grad()
+            pred_real_b1 = D_B(real_B1); loss_d_real_b1 = criterion_gan(pred_real_b1, target_real); loss_d_b += loss_d_real_b1
+            pred_real_b2 = D_B(real_B2); loss_d_real_b2 = criterion_gan(pred_real_b2, target_real); loss_d_b += loss_d_real_b2
+            pred_real_b3 = D_B(real_B3); loss_d_real_b3 = criterion_gan(pred_real_b3, target_real); loss_d_b += loss_d_real_b3
+            fake_b1 = fakeBbuffer.push_and_pop(fake_b1); pred_fake_b1 = D_B(fake_b1.detach()); loss_d_fake_b1 = criterion_gan(pred_fake_b1, target_fake); loss_d_b += loss_d_fake_b1
+            fake_b2 = fakeBbuffer.push_and_pop(fake_b2); pred_fake_b2 = D_B(fake_b2.detach()); loss_d_fake_b2 = criterion_gan(pred_fake_b2, target_fake); loss_d_b += loss_d_fake_b2
+            fake_b3 = fakeBbuffer.push_and_pop(fake_b3); pred_fake_b3 = D_B(fake_b3.detach()); loss_d_fake_b3 = criterion_gan(pred_fake_b3, target_fake); loss_d_b += loss_d_fake_b3
+            loss_d_b.backward()
+            opt_d_b.step()
 
             
