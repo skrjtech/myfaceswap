@@ -1,3 +1,3 @@
-from mydeepfake.mydeepfake.models.predictor import Predictor
-from mydeepfake.mydeepfake.models.generator import Generator
-from mydeepfake.mydeepfake.models.discriminator import Discriminator
+from mydeepfake.mydeepfake.models._predictor import Predictor
+from mydeepfake.mydeepfake.models._generator import Generator
+from mydeepfake.mydeepfake.models._discriminator import Discriminator
