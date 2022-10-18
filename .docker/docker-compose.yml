@@ -6,6 +6,7 @@ services:
       context: ../.docker
       dockerfile: Dockerfile
     image: skrjtech/faceswap:latest
+    shm_size: '8gb'
     container_name: faceswap_container
     cap_add:
       - SYS_ADMIN
