@@ -55,14 +55,14 @@ def train(
     
     def GeneratorTotalLoss(A1, A2, A3, B1, B2, B3):
         OPTPG.zero_grad()
-        total_loss = torch.sum([
+        total_loss = torch.stack([
             IdentityA2BLoss(A1),
             IdentityB2ALoss(B1),
             GanA2BLoss(A1),GanA2BLoss(A2),GanA2BLoss(A3),
             GanB2ALoss(B1),GanB2ALoss(B2),GanB2ALoss(B3),
             CycleConsistencyA2BLoss(A1, A2, A3), CycleConsistencyB2ALoss(B1, B2, B3),
             RecurrentA2BLoss(A1, A2, A3), RecurrentB2ALoss(B1, B2, B3)
-        ])
+        ], dim=0).sum()
         total_loss.backward()
         return total_loss.item()
 
@@ -70,10 +70,10 @@ def train(
         def DomainARealLoss(A): return criterion_gan(DiscriminateA(A), target_real)
         def DomainAFakeLoss(B): return criterion_gan(DiscriminateA(fakeAbuffer.push_and_pop(GenerateFakeAImage(B)).detach()), target_fake)
         OPTDA.zero_grad()
-        total_loss = torch.sum([
+        total_loss = torch.stack([
             DomainARealLoss(A1), DomainARealLoss(A2), DomainARealLoss(A3),
             DomainAFakeLoss(B1), DomainAFakeLoss(B2), DomainAFakeLoss(B3) 
-        ]) * 0.5 
+        ], dim=0).sum() * 0.5 
         total_loss.backward()
         return total_loss.item()
     
@@ -81,10 +81,10 @@ def train(
         def DomainBRealLoss(B): return criterion_gan(DiscriminateB(B), target_real)
         def DomainBFakeLoss(A): return criterion_gan(DiscriminateB(fakeBbuffer.push_and_pop(GenerateFakeBImage(A)).detach()), target_fake)
         OPTDB.zero_grad()
-        total_loss = torch.sum([
+        total_loss = torch.stack([
             DomainBRealLoss(A1), DomainBRealLoss(A2), DomainBRealLoss(A3),
             DomainBFakeLoss(B1), DomainBFakeLoss(B2), DomainBFakeLoss(B3) 
-        ]) * 0.5 
+        ], dim=0).sum() * 0.5 
         total_loss.backward()
         return total_loss.item()
     
@@ -98,7 +98,7 @@ def train(
 
         gan_loss = GeneratorTotalLoss(A1, A2, A3, B1, B2, B3)
         domain_a_loss = DomainATotalLoss(A1, A2, A3, B1, B2, B3)
-        domain_b_loss = DomainATotalLoss(A1, A2, A3, B1, B2, B3)
+        domain_b_loss = DomainBTotalLoss(A1, A2, A3, B1, B2, B3)
         return gan_loss, domain_a_loss, domain_b_loss
     
     for epoch in range(epoch_start, epochs):
