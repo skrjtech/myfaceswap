@@ -38,14 +38,13 @@ class RecycleTrainer:
 
         # On Cuda
         if cuda:
-            map(
-                lambda x: x.cuda(),
-                [
-                    self.GenerateA2B, self.GenerateB2A,
-                    self.DiscriminatorA, self.DiscriminatorB,
-                    self.PredictorA, self.PredictorB
-                ]
-            )
+            self.GenerateA2B.cuda()
+            self.GenerateB2A.cuda()
+            self.DiscriminatorA.cuda()
+            self.DiscriminatorB.cuda()
+            self.PredictorA.cuda()
+            self.PredictorB.cuda()
+            
         # Parameter Init
         map(
             lambda x: x.apply(mydeepfake.utils.weights_init_normal),
@@ -347,7 +346,3 @@ class RecycleTest:
 
             fakeB3mean = (fakeB3 + fakeB3_pred) * .5
             fakeA3mean = (fakeA3 + fakeA3_pred) * .5
-            
-
-
-
