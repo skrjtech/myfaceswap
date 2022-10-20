@@ -16,7 +16,7 @@ class RecycleTrainer:
         datasetpath = self.DatasetPath = os.path.join(root, 'dataset')
         if not os.path.isdir(datasetpath): print(" (dataset) 指定のディレクトリがありません datasetのディレクトリ作成を要求します..."); exit(0)
         domainApath = self.DomainAPath = os.path.join(datasetpath, domain_a)
-        domainBpath = self.DomainBPath = os.paht.join(datasetpath, domain_b)
+        domainBpath = self.DomainBPath = os.path.join(datasetpath, domain_b)
         if not os.path.isdir(domainApath) or not os.path.isdir(domainBpath): print(" (domainA or domainB) 指定のディレクトリがありません"); exit(0)
         path = self.generateImagePath = os.path.join(self.ResultDir, 'output')
         if not os.path.isdir(path): os.mkdir(path)
