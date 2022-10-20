@@ -94,7 +94,7 @@ class RecycleTrainer:
             torchvision.transforms.RandomCrop(image_size),
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
-        dataset = FaceDatasetSquence(root, transforms=transforms, unaligned=False, domainA=domain_a, domainB=domain_b, skip=frame_skip)
+        dataset = FaceDatasetSquence(root, transforms=transforms, unaligned=False, domainA=domainApath, domainB=domainBpath, skip=frame_skip)
         self.dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch, shuffle=True, num_workers=num_cpu)
 
     def IdentityLossBlock(self, A, B):
