@@ -7,7 +7,7 @@ import torchvision
 from PIL import Image
 
 class FaceDatasetSquence(torch.utils.data.Dataset):
-    def __init__(self, path: str, transforms: torchvision.transforms=None, unaligned: bool=False, mode: str='train', domainA: str='fadg0/video/', domainB: str='faks0/video', skip: int=0) -> None:
+    def __init__(self, path: str, transforms: list=None, unaligned: bool=False, mode: str='train', domainA: str='fadg0/video/', domainB: str='faks0/video', skip: int=0) -> None:
         super().__init__()
         self.transform = torchvision.transforms.Compose(transforms)
         self.unaligned = unaligned
@@ -59,7 +59,7 @@ class FaceDatasetVideo(Dataset):
         self.remove_num = (skip + 1) * 2
         self.transform = torchvision.transforms.Compose(transforms)
         self.unaligned = unaligned
-        all_files = sorted(glob.glob(os.path.join(root, files) + '/*'))
+        all_files = sorted(glob.glob(os.path.join(root, video) + '/*'))
         self.files = all_files[:-self.remove_num]
 
     def __getitem__(self, index):
