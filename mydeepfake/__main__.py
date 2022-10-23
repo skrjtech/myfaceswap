@@ -1,55 +1,460 @@
-
 if __name__ == '__main__':
-    import torch
-    import itertools
-    import torchvision
-    import mydeepfake.utils as myutils
-    from mydeepfake.trainer import train
-    from mydeepfake.models.generator import Generator
-    from mydeepfake.models.predictor import Predictor
-    from mydeepfake.models.discriminator import Discriminator
-    from mydeepfake.dataset.datasetsquence import FaceDatasetSquence
+    import os
+    import sys
+    import cv2
+    import warnings
+    import argparse
 
-    GA2B = Generator(3, 3)
-    GB2A = Generator(3, 3)
-    DA = Discriminator(3)
-    DB = Discriminator(3)
-    PA = Predictor(3 * 2, 3)
-    PB = Predictor(3 * 2, 3)
+    dirCheck = lambda path: not os.path.isdir(path)
+    def makedirs(*args):
+        for path in args: 
+            if dirCheck(path):
+                os.makedirs(path)
+                print(f"{path} ディレクトリの作成に成功")
 
-    map(lambda model: model.apply(myutils.weights_init_normal), [GA2B, GB2A, DA, DB, PA, PB])
-
-    criterion_GAN = torch.nn.MSELoss()
-    criterion_recycle = torch.nn.L1Loss()
-    criterion_identity = torch.nn.L1Loss()
-    criterion_recurrent = torch.nn.L1Loss()
-
-    optimizer_PG = torch.optim.Adam(itertools.chain(GA2B.parameters(), GB2A.parameters(), PA.parameters(), PB.parameters()), lr=0.001, betas=(0.5, 0.999))
-    optimizer_D_A = torch.optim.Adam(DA.parameters(), lr=0.001, betas=(0.5, 0.999))
-    optimizer_D_B = torch.optim.Adam(DB.parameters(), lr=0.001, betas=(0.5, 0.999))
-
-    # lr_scheduler_PG = torch.optim.lr_scheduler.LambdaLR(optimizer_PG, lr_lambda=myutils.LambdaLR(1, 1, 1).step)
-    # lr_scheduler_D_A = torch.optim.lr_scheduler.LambdaLR(optimizer_D_A, lr_lambda=myutils.LambdaLR(1, 1, 1).step)
-    # lr_scheduler_D_B = torch.optim.lr_scheduler.LambdaLR(optimizer_D_B, lr_lambda=myutils.LambdaLR(1, 1, 1).step)
-
-    schedules = lambda: None
-
-    # データローダー
-    transforms = [ torchvision.transforms.Resize(int(256*1.12), torchvision.transforms.InterpolationMode.BICUBIC), 
-                    torchvision.transforms.RandomCrop(256), 
-                    torchvision.transforms.ToTensor(),
-                    torchvision.transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)) ]
-    dataset = FaceDatasetSquence("/ws/IORoot/Dataset/", transforms=transforms, unaligned=False, domainA="fadg0/video/", domainB="faks0/video/", skip=2)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True, num_workers=8)
-
-    input = torch.Tensor(4, 3, 256, 256)
-    target_real = torch.autograd.Variable(torch.Tensor(4).fill_(1.0), requires_grad=False)
-    target_fake = torch.autograd.Variable(torch.Tensor(4).fill_(0.0), requires_grad=False)
-
-    fakeAbuffer = myutils.ReplayBuffer()
-    fakeBbuffer = myutils.ReplayBuffer()
+    def saveframe(*args):
+            for (frames, path) in args:
+                for i, frame in enumerate(frames):
+                    cv2.imwrite(os.path.join(path, f'{i}.png'), frame)
     
-    train(
-        GA2B, GB2A, DA, DB, PA, PB, optimizer_PG, optimizer_D_A, optimizer_D_B, schedules,
-        input, target_real, target_fake, fakeAbuffer, fakeBbuffer, 5., 5., 10., 10., dataloader, 1, 0
-    )
+    def save_loss(writer, train_info, batches_done):
+        for k, v in train_info.items():
+            writer.add_scalar(k, v, batches_done)
+
+    def trainer(args):
+        import torch
+        import itertools
+        import torchvision
+        import utils as myutils
+        from mydeepfake.dataset.datasetsquence import FaceDatasetSquence
+        from mydeepfake.models import Generator, Predictor, Discriminator
+        from torch.utils.tensorboard import SummaryWriter
+
+        ioRoot = args.root_dir
+        print(f"{ioRoot} ディレクトリの確認中...")
+        if dirCheck(ioRoot): print(f"{ioRoot} ディレクトリの確認に失敗...")
+        print(f"{ioRoot} ディレクトリを作成します...")
+        makedirs(ioRoot)
+        
+        print("モデルパラメータ保存用のディレクトリを作成します...")
+        modelpath = os.path.join(ioRoot, 'models')
+        makedirs(modelpath)
+
+        print("ログ用のディレクトリを作成します...")
+        logger = os.path.join(ioRoot, 'logger/recycle')
+        makedirs(logger)
+
+        writer = SummaryWriter(log_dir=logger)
+
+        netG_A2B = Generator(input_nc, output_nc)
+        netG_B2A = Generator(output_nc, input_nc)
+
+        netD_A = Discriminator(input_nc)
+        netD_B = Discriminator(output_nc)
+
+        netP_A = Predictor(input_nc * 2, input_nc)
+        netP_B = Predictor(output_nc * 2, output_nc)
+
+        if args.gpu:
+            netG_A2B.cuda()
+            netG_B2A.cuda()
+            netD_A.cuda()
+            netD_B.cuda()
+            netP_A.cuda()
+            netP_B.cuda()
+
+        netG_A2B.apply(myutils.weights_init_normal)
+        netG_B2A.apply(myutils.weights_init_normal)
+        netD_A.apply(myutils.weights_init_normal)
+        netD_B.apply(myutils.weights_init_normal)
+
+        if args.load_model:
+            netG_A2B.load_state_dict(torch.load(os.path.join(modelpath, "netG_A2B.pth"), map_location="cuda:0"), strict=False)
+            netG_B2A.load_state_dict(torch.load(os.path.join(modelpath, "netG_B2A.pth"), map_location="cuda:0"), strict=False)
+            netD_A.load_state_dict(torch.load(os.path.join(modelpath, "netD_A.pth"), map_location="cuda:0"), strict=False)
+            netD_B.load_state_dict(torch.load(os.path.join(modelpath, "netD_B.pth"), map_location="cuda:0"), strict=False)
+            netP_A.load_state_dict(torch.load(os.path.join(modelpath, "netP_A.pth"), map_location="cuda:0"), strict=False)
+            netP_B.load_state_dict(torch.load(os.path.join(modelpath, "netP_B.pth"), map_location="cuda:0"), strict=False)
+
+        criterion_GAN = torch.nn.MSELoss()
+        criterion_recycle = torch.nn.L1Loss()
+        criterion_identity = torch.nn.L1Loss()
+        criterion_recurrent = torch.nn.L1Loss()
+
+        optimizer_PG = torch.optim.Adam(itertools.chain(netG_A2B.parameters(), netG_B2A.parameters(), netP_A.parameters(), netP_B.parameters()), lr=args.lr, betas=(args.beta1, args.beta2))
+        optimizer_D_A = torch.optim.Adam(netD_A.parameters(), lr=args.lr, betas=(args.beta1, args.beta2))
+        optimizer_D_B = torch.optim.Adam(netD_B.parameters(), lr=args.lr, betas=(args.beta1, args.beta2))
+
+        lr_scheduler_PG = torch.optim.lr_scheduler.LambdaLR(optimizer_PG, lr_lambda=LambdaLR(args.epochs, args.start_epoch, args.decay_epoch).step)
+        lr_scheduler_D_A = torch.optim.lr_scheduler.LambdaLR(optimizer_D_A, lr_lambda=LambdaLR(args.epochs, args.start_epoch, args.decay_epoch).step)
+        lr_scheduler_D_B = torch.optim.lr_scheduler.LambdaLR(optimizer_D_B, lr_lambda=LambdaLR(args.epochs, args.start_epoch, args.decay_epoch).step)
+
+        Tensor = torch.cuda.FloatTensor if not args.cpu else torch.Tensor
+        input_A1 = Tensor(args.batch_size, args.input_nc, args.size, args.size)
+        input_A2 = Tensor(args.batch_size, args.input_nc, args.size, args.size)
+        input_A3 = Tensor(args.batch_size, args.input_nc, args.size, args.size)
+        input_B1 = Tensor(args.batch_size, args.output_nc, args.size, args.size)
+        input_B2 = Tensor(args.batch_size, args.output_nc, args.size, args.size)
+        input_B3 = Tensor(args.batch_size, args.output_nc, args.size, args.size)
+        target_real = Variable(Tensor(args.batch_size).fill_(1.0), requires_grad=False)
+        target_fake = Variable(Tensor(args.batch_size).fill_(0.0), requires_grad=False)
+
+        fake_A_buffer = ReplayBuffer()
+        fake_B_buffer = ReplayBuffer()
+
+        transforms = [ torchvision.transforms.Resize(int(args.image_size * 1.12),
+            torchvision.transforms.InterpolationMode.BICUBIC),
+            torchvision.transforms.RandomCrop(args.image_size),
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+        domainApath = os.path.join(ioroot, 'dateset/videoframe/domain_a')
+        if dirCheck(domainApath):
+            print(f"{domainApath} ディレクトリの確認に失敗...")
+            print("実行終了")
+            sys.exit()
+        domainApath = os.path.join(ioroot, 'dateset/videoframe/domain_b')
+        if dirCheck(domainBpath):
+            print(f"{domainBpath} ディレクトリの確認に失敗...")
+            print("実行終了")
+            sys.exit()
+        dataset = FaceDatasetSquence(ioroot, transforms=transforms, unaligned=False, domainA=domainApath, domainB=domainBpath, skip=args.frame_skip)
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.batch, shuffle=True, num_workers=args.work_cpu)
+
+        for epoch in range(opt.start_epoch, opt.n_epochs):
+            for i, batch in enumerate(dataloader):
+                real_A1 = Variable(input_A1.copy_(batch['A1']))
+                real_A2 = Variable(input_A2.copy_(batch['A2']))
+                real_A3 = Variable(input_A3.copy_(batch['A3']))
+                real_B1 = Variable(input_B1.copy_(batch['B1']))
+                real_B2 = Variable(input_B2.copy_(batch['B2']))
+                real_B3 = Variable(input_B3.copy_(batch['B3']))
+                
+                optimizer_PG.zero_grad()
+                same_B1 = netG_A2B(real_B1)
+                loss_identity_B = criterion_identity(same_B1, real_B1) * args.identity_loss_rate
+                same_A1 = netG_B2A(real_A1)
+                loss_identity_A = criterion_identity(same_A1, real_A1) * args.identity_loss_rate
+
+                fake_B1 = netG_A2B(real_A1)
+                pred_fake_B1 = netD_B(fake_B1)
+                loss_GAN_A2B1 = criterion_GAN(pred_fake_B1, target_real) * args.gan_loss_rate
+
+                fake_B2 = netG_A2B(real_A2)
+                pred_fake_B2 = netD_B(fake_B2)
+                loss_GAN_A2B2 = criterion_GAN(pred_fake_B2, target_real) * args.gan_loss_rate
+
+                fake_B3 = netG_A2B(real_A3)
+                pred_fake_B3 = netD_B(fake_B3)
+                loss_GAN_A2B3 = criterion_GAN(pred_fake_B3, target_real) * args.gan_loss_rate
+
+                fake_A1 = netG_B2A(real_B1)
+                pred_fake_A1 = netD_A(fake_A1)
+                loss_GAN_B2A1 = criterion_GAN(pred_fake_A1, target_real) * args.gan_loss_rate
+
+                fake_A2 = netG_B2A(real_B2)
+                pred_fake_A2 = netD_A(fake_A2)
+                loss_GAN_B2A2 = criterion_GAN(pred_fake_A2, target_real) * args.gan_loss_rate
+
+                fake_A3 = netG_B2A(real_B3)
+                pred_fake_A3 = netD_A(fake_A3)
+                loss_GAN_B2A3 = criterion_GAN(pred_fake_A3, target_real) * args.gan_loss_rate
+
+                fake_B12 = torch.cat((fake_B1, fake_B2), dim=1)
+                fake_B3_pred = netP_B(fake_B12)
+                recovered_A3 = netG_B2A(fake_B3_pred)
+                loss_recycle_ABA = criterion_recycle(recovered_A3, real_A3) * args.recycle_loss_rate
+
+                fake_A12 = torch.cat((fake_A1, fake_A2), dim=1)
+                fake_A3_pred = netP_A(fake_A12)
+                recovered_B3 = netG_A2B(fake_A3_pred)
+                loss_recycle_BAB = criterion_recycle(recovered_B3, real_B3) * args.recycle_loss_rate
+
+                real_A12 = torch.cat((real_A1, real_A2), dim=1)
+                pred_A3 = netP_A(real_A12)
+                loss_recurrent_A = criterion_recurrent(pred_A3, real_A3) * args.recurrent_loss_rate
+
+                real_B12 = torch.cat((real_B1, real_B2), dim=1)
+                pred_B3 = netP_B(real_B12)
+                loss_recurrent_B = criterion_recurrent(pred_B3, real_B3) * args.recurrent_loss_rate
+
+                loss_PG = loss_identity_A + loss_identity_B \
+                        + loss_GAN_A2B1 + loss_GAN_A2B2 + loss_GAN_A2B3 + loss_GAN_B2A1 + loss_GAN_B2A2 + loss_GAN_B2A3 \
+                        + loss_recycle_ABA + loss_recycle_BAB \
+                        + loss_recurrent_A + loss_recurrent_B
+                loss_PG.backward()
+                
+                optimizer_PG.step()
+
+                fake_A1_clone = fake_A1.clone()
+                fake_B1_clone = fake_B1.clone()
+                fake_A2_clone = fake_A2.clone()
+                fake_B2_clone = fake_B2.clone()
+                fake_A3_clone = fake_A3.clone()
+                fake_B3_clone = fake_B3.clone()
+                real_A1_clone = real_A1.clone()
+                real_B1_clone = real_B1.clone()
+                real_A2_clone = real_A2.clone()
+                real_B2_clone = real_B2.clone()
+                real_A3_clone = real_A3.clone()
+                real_B3_clone = real_B3.clone()
+                recovered_A1 = netG_B2A(fake_B1_clone)
+                recovered_B1 = netG_A2B(fake_A1_clone)
+
+                optimizer_D_A.zero_grad()
+
+                pred_real_A1 = netD_A(real_A1)
+                loss_D_real_A1 = criterion_GAN(pred_real_A1, target_real)
+                pred_real_A2 = netD_A(real_A2)
+                loss_D_real_A2 = criterion_GAN(pred_real_A2, target_real)
+                pred_real_A3 = netD_A(real_A3)
+                loss_D_real_A3 = criterion_GAN(pred_real_A3, target_real)
+
+                fake_A1 = fake_A_buffer.push_and_pop(fake_A1)
+                pred_fake_A1 = netD_A(fake_A1.detach())
+                loss_D_fake_A1 = criterion_GAN(pred_fake_A1, target_fake)
+                
+                fake_A2 = fake_A_buffer.push_and_pop(fake_A2)
+                pred_fake_A2 = netD_A(fake_A2.detach())
+                loss_D_fake_A2 = criterion_GAN(pred_fake_A2, target_fake)
+                
+                fake_A3 = fake_A_buffer.push_and_pop(fake_A3)
+                pred_fake_A3 = netD_A(fake_A3.detach())
+                loss_D_fake_A3 = criterion_GAN(pred_fake_A3, target_fake)
+
+                loss_D_A = (loss_D_real_A1 + loss_D_real_A2 + loss_D_real_A3 + loss_D_fake_A1 + loss_D_fake_A2 + loss_D_fake_A3) * 0.5
+                loss_D_A.backward()
+
+                optimizer_D_A.step()
+
+                optimizer_D_B.zero_grad()
+
+                pred_real_B1 = netD_B(real_B1)
+                loss_D_real_B1 = criterion_GAN(pred_real_B1, target_real)
+                pred_real_B2 = netD_B(real_B2)
+                loss_D_real_B2 = criterion_GAN(pred_real_B2, target_real)
+                pred_real_B3 = netD_B(real_B3)
+                loss_D_real_B3 = criterion_GAN(pred_real_B3, target_real)
+                
+                fake_B1 = fake_B_buffer.push_and_pop(fake_B1)
+                pred_fake_B1 = netD_B(fake_B1.detach())
+                loss_D_fake_B1 = criterion_GAN(pred_fake_B1, target_fake)
+
+                fake_B2 = fake_B_buffer.push_and_pop(fake_B2)
+                pred_fake_B2 = netD_B(fake_B2.detach())
+                loss_D_fake_B2 = criterion_GAN(pred_fake_B2, target_fake)
+
+                fake_B3 = fake_B_buffer.push_and_pop(fake_B3)
+                pred_fake_B3 = netD_B(fake_B3.detach())
+                loss_D_fake_B3 = criterion_GAN(pred_fake_B3, target_fake)
+
+                loss_D_B = (loss_D_real_B1 + loss_D_real_B2 + loss_D_real_B3 + loss_D_fake_B1 + loss_D_fake_B2 + loss_D_fake_B3) * 0.5
+                loss_D_B.backward()
+                optimizer_D_B.step()
+
+                train_info = {
+                    'epoch': epoch, 
+                    'batch_num': i, 
+                    'lossG': loss_PG.item(),
+                    'lossG_identity': (loss_identity_A.item() + loss_identity_B.item()),
+                    'lossG_GAN': (loss_GAN_A2B1.item()+loss_GAN_A2B2.item()+loss_GAN_A2B3.item()+loss_GAN_B2A1.item()+loss_GAN_B2A2.item()+loss_GAN_B2A3.item()),
+                    'lossG_recycle': (loss_recycle_ABA.item() + loss_recycle_BAB.item()),
+                    'lossG_recurrent': (loss_recurrent_A.item() + loss_recurrent_B.item()),
+                    'lossD': (loss_D_fake_A1.item() + loss_D_fake_A2.item() + loss_D_fake_A3.item()
+                            + loss_D_real_A1.item() + loss_D_real_A2.item() + loss_D_real_A3.item()
+                            + loss_D_fake_B1.item() + loss_D_fake_B2.item() + loss_D_fake_B3.item()
+                            +loss_D_real_B1.item() + loss_D_real_B2.item() + loss_D_real_B3.item()),
+                    'loss_DA_fake': loss_D_fake_A1 + loss_D_fake_A2 + loss_D_fake_A3,
+                    'loss_DA_real': loss_D_real_A1 + loss_D_real_A2 + loss_D_real_A3,
+                    'loss_DB_fake': loss_D_fake_B1 + loss_D_fake_B2 + loss_D_fake_B3,
+                    'loss_DB_real': loss_D_real_B1 + loss_D_real_B2 + loss_D_real_B3,
+                    
+                }
+
+                if i % args.iter_view == 0 and args.verbose:
+                    print('-' * 50)
+                    pprint.pprint(train_info)
+            
+                batches_done = (epoch - 1) * len(dataloader) + i
+                save_loss(writer, train_info, batches_done)
+            
+            def makeABA_Or_BAB(img1, img2, img3, path):
+                img1 = img1[0].detach().cpu()
+                img2 = img2[0].detach().cpu()
+                img3 = img3[0].detach().cpu()
+                images = torch.cat((img1, img2, img3))
+                grid = torchvision.utils.make_grid(images)
+                writer.add_image(path, grid)
+
+            def makeP(img1, img2, img3, img4, path):
+                img1 = img1[0].detach().cpu()
+                img2 = img2[0].detach().cpu()
+                img3 = img3[0].detach().cpu()
+                img4 = img4[0].detach().cpu()
+                images = torch.cat((img1, img2, img3, img4))
+                grid = torchvision.utils.make_grid(images)
+                writer.add_image(path, grid)
+            
+            def makeP_A_B(img1, img2, path):
+                img1 = img1[0].detach().cpu()
+                img2 = img2[0].detach().cpu()
+                images = torch.cat((img1, img2))
+                grid = torchvision.utils.make_grid(images)
+                writer.add_image(path, grid)
+
+            makeABA_Or_BAB(real_B1_clone, fake_A1_clone, recovered_B1, 'IMG_BAB')
+            makeABA_Or_BAB(real_A1_clone, fake_B1_clone, recovered_A1, 'IMG_ABA')
+            writer.add_image('IMG_IDENTITY_A, ', same_A1[0])
+            writer.add_image('IMG_IDENTITY_B, ', same_B1[0])
+            makeP(pred_A3, real_A1_clone, real_A2_clone, real_A3_clone, 'IMG_PREDA')
+            makeP(pred_B3, real_B1_clone, real_B2_clone, real_B3_clone, 'IMG_PREDB')
+            makeP_A_B(fake_A3_pred, recovered_B3, 'IMG_BAPB')
+            makeP_A_B(fake_B3_pred, recovered_A3, 'IMG_ABPA')
+
+            lr_scheduler_PG.step()
+            lr_scheduler_D_A.step()
+            lr_scheduler_D_B.step()
+
+            torch.save(netG_A2B.state_dict(), os.path.join(modelpath, 'netG_A2B.pth'))
+            torch.save(netG_B2A.state_dict(), os.path.join(modelpath, 'netG_B2A.pth'))
+            torch.save(netD_A.state_dict(),   os.path.join(modelpath, 'netD_A.pth'))
+            torch.save(netD_B.state_dict(),   os.path.join(modelpath, 'netD_B.pth'))
+            torch.save(netP_A.state_dict(),   os.path.join(modelpath, 'netP_A.pth'))
+            torch.save(netP_B.state_dict(),   os.path.join(modelpath, 'netP_B.pth'))
+
+
+    def generator(args):
+        video = cv2.VideoWriter(output_video_path, fourcc, 10.0, (in_video_w, in_video_h))
+        netG_A2B = Generator(opt2.input_nc, opt2.output_nc)
+        netG_B2A = Generator(opt2.output_nc, opt2.input_nc)
+        netP_A = Predictor(opt2.input_nc*2, opt2.input_nc)
+        netP_B = Predictor(opt2.output_nc*2, opt2.output_nc)
+        if opt2.cuda:
+            netG_A2B.cuda()
+            netG_B2A.cuda()
+            netP_A.cuda()
+            netP_B.cuda()
+        netG_A2B.load_state_dict(torch.load(os.path.join(opt2.model_load_path, 'netG_A2B.pth')))
+        netG_B2A.load_state_dict(torch.load(os.path.join(opt2.model_load_path, 'netG_B2A.pth')))
+        netP_A.load_state_dict(torch.load(os.path.join(opt2.model_load_path, "netP_A.pth"), map_location="cuda:0"), strict=False)
+        netP_B.load_state_dict(torch.load(os.path.join(opt2.model_load_path, "netP_B.pth"), map_location="cuda:0"), strict=False)
+        
+        netG_A2B.eval()
+        netG_B2A.eval()
+        netP_A.eval()
+        netP_B.eval()
+        Tensor = torch.cuda.FloatTensor if opt2.cuda else torch.Tensor
+        input_A1 = Tensor(opt2.batch_size, opt2.input_nc, opt2.size, opt2.size)
+        input_A2 = Tensor(opt2.batch_size, opt2.input_nc, opt2.size, opt2.size)
+        input_A3 = Tensor(opt2.batch_size, opt2.input_nc, opt2.size, opt2.size)
+        input_B1 = Tensor(opt2.batch_size, opt2.output_nc, opt2.size, opt2.size)
+        input_B2 = Tensor(opt2.batch_size, opt2.output_nc, opt2.size, opt2.size)
+        input_B3 = Tensor(opt2.batch_size, opt2.output_nc, opt2.size, opt2.size)
+        transforms_ = [transforms.Resize(int(opt2.size*1.0), Image.BICUBIC), 
+                        transforms.CenterCrop(opt2.size),
+                        transforms.ToTensor(),
+                        transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)) ]
+        dataset = FaceDatasetVideo(opt2.dataroot, transforms_=transforms_, mode='test', files=input_dir_path, skip=skip)
+        dataloader = DataLoader(dataset, batch_size=1, shuffle=False, num_workers=opt2.n_cpu)
+        
+        for i, batch in enumerate(dataloader):
+            if domain == 'A':
+                real_A1 = Variable(input_A1.copy_(batch['1']))
+                real_A2 = Variable(input_A2.copy_(batch['2']))
+                real_A3 = Variable(input_A3.copy_(batch['3']))
+
+                fake_B1 = netG_A2B(real_A1)
+                fake_B2 = netG_A2B(real_A2)
+                fake_B3 = netG_A2B(real_A3)
+
+                fake_B12 = torch.cat((fake_B1, fake_B2), dim=1)
+                fake_B3_pred = netP_B(fake_B12)
+
+                fake_B3_ave = (fake_B3 + fake_B3_pred) / 2.
+
+                out_img1 = torch.cat([real_A3, fake_B3_ave], dim=3)
+            else:
+                real_B1 = Variable(input_B1.copy_(batch['1']))
+                real_B2 = Variable(input_B2.copy_(batch['2']))
+                real_B3 = Variable(input_B3.copy_(batch['3']))
+
+                fake_A1 = netG_B2A(real_B1)
+                fake_A2 = netG_B2A(real_B2)
+                fake_A3 = netG_B2A(real_B3)
+
+                fake_A12 = torch.cat((fake_A1, fake_A2), dim=1)
+                fake_A3_pred = netP_A(fake_A12)
+                
+                fake_A3_ave = (fake_A3 + fake_A3_pred) / 2.
+
+                out_img1 = torch.cat([real_B3, fake_A3_ave], dim=3)
+
+            image = 127.5 * (out_img1[0].cpu().float().detach().numpy() + 1.0)
+            image = image.transpose(1,2,0).astype(np.uint8)
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            video.write(image)
+    
+    def makedata(args):
+        import utils as myutils
+        ioRoot = args.root_dir
+        print(f"{ioRoot} ディレクトリの確認中...")
+        if dirCheck(ioRoot): print(f"{ioRoot} ディレクトリの確認に失敗...")
+        print(f"{ioRoot} ディレクトリを作成します...")
+        makedirs(ioRoot)
+        domain_a = args.video_src
+        domain_b = args.video_tgt
+        result_a_path = os.path.join(ioRoot, 'dataset/videoframe/domain_a')
+        result_b_path = os.path.join(ioRoot, 'dataset/videoframe/domain_b')
+        print("出力結果用のディレクトリを作成します...")
+        makedirs(result_a_path, result_b_path)
+
+        print("背景削除の実行準備...")
+        ClearBack = myutils.CallIndexMattingModel()
+        print("背景削除の実行完了")
+        print("背景削除の実行をします...")
+        warnings.resetwarnings()
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore')
+            domain_a_frame = myutils.Video2Frame(domain_a)
+            domain_b_frame = myutils.Video2Frame(domain_b)
+            res_domain_a_frame = ClearBack(domain_a_frame)
+            res_domain_b_frame = ClearBack(domain_b_frame)
+        print("背景削除の実行完了")
+        print("結果の保存を実行します...")
+        saveframe(
+            (res_domain_a_frame, result_a_path),
+            (res_domain_b_frame, result_b_path)
+        )
+        print("結果の保存完了")
+        print("すべての処理が完了しました")
+        print("お疲れ様でした")
+        print("次の実行に移行して下さい")
+
+    parser = argparse.ArgumentParser('mydeepfake')
+    subparser = parser.add_subparsers()
+
+    # Trainer
+    p = subparser.add_parser('trainer', help='trainer -h --help')    
+    p.add_argument('--root-dir', type=str, default='./io_root', help='入出力用ディレクトリ')
+    p.add_argument('--epochs', type=int, default=1, help='学習回数')
+    p.add_argument('-v', '--verbose', action='store_true', help='学習進行状況表示')
+    p.set_defaults(func=trainer)
+    p.set_defaults(message='trainer called')
+
+    # Predict
+    p = subparser.add_parser('predict', help='predict -h --help')
+    p.add_argument('--root-dir', type=str, default='./io_root', help='入出力用ディレクトリ')
+    p.add_argument('-v', '--verbose', action='store_true', help='学習進行状況表示')
+    p.set_defaults(func=predict)
+    p.set_defaults(message='predict called')
+
+    # make dataset 
+    p = subparser.add_parser('makedata', help='makedata -h --help')
+    p.add_argument('--root-dir', type=str, default='./io_root', help='入出力用ディレクトリ')
+    p.add_argument('--video-src', type=str, help='ベースとなる人物')
+    p.add_argument('--video-tgt', type=str, help='対象となる人物')
+    p.add_argument('-v', '--verbose', action='store_true', help='学習進行状況表示')
+    p.set_defaults(func=makedata)
+    p.set_defaults(message='makedata called')
+
+    args = parser.parse_args()
+    args.func(args)
