@@ -2,9 +2,10 @@ import torch
 from mydeepfake.models.modelbase import Flatten
 
 class Discriminator(torch.nn.Module):
+    count : int = 0
     def __init__(self, input_nc):
         super(Discriminator, self).__init__()
-
+        self.count = Discriminator.count = Discriminator.count + 1
         self.model = torch.nn.Sequential(
             torch.nn.Conv2d(input_nc, 64, 4, stride=2, padding=1),
             torch.nn.LeakyReLU(0.2, inplace=True),
