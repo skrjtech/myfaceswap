@@ -4,7 +4,34 @@ import itertools
 import torchvision
 import mydeepfake.utils
 from mydeepfake.dataset.datasetsquence import FaceDatasetSquence
-from mydeepfake.models import Generator, Predictor, Discriminator, predictor
+from mydeepfake.models import Generator, Predictor, Discriminator
+
+class GeneratorAndPredictBlock(torch.nn.Module):
+    def __init__(self, ioroot: str, batch: int, inp_ch: int, out_ch: int, cuda: bool, load_model: bool) -> None:
+        super(GeneratorAndPredictBlock, self).__init__()
+        self.ioroot = ioroot
+        
+        self.GA2B = Generator(inp_ch, out_ch)
+        self.GB2A = Generator(out_ch, inp_ch)
+        self.PA = Predictor(inp_ch * 2, inp_ch)
+        self.PB = Predictor(out_ch * 2, out_ch)
+        models = [self.GA2B, self.GB2A, self.PA, self.PB]
+        if cuda:
+            map(
+                lambda x: x.cuda(), models
+            )        
+        map(
+            lambda x: x.apply(mydeepfake.utils.weights_init_normal), models
+        )
+
+        if load_model:
+            map(
+                lambda x: x.load_state_dict(torch.load(os.path.join(ioroot, 'models', f'{x.__name__}_{x.count}.pth'), map_location='cuda:0'), strict=False)
+            )
+        
+        self.criterion_Gan = torch.nn.MSELoss()
+
+
 
 class RecycleTrainer:
     def __init__(self, root: str, domain_a: str, domain_b: str, epochs: int, epoch_start: int, epoch_decay: int, batch: int, input_ch: int, output_ch: int, image_size: int, cuda: bool, max_frame_size: int, lr: float, beta1: float, beta2: float, num_cpu: int, frame_skip: int, identity_loss_rate: float, gan_loss_rate: float, recycle_loss_rate: float, current_loss_rate: float) -> None:
