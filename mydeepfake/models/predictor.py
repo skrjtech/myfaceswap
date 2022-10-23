@@ -2,9 +2,10 @@ import torch
 from mydeepfake.models.modelbase import ConvUnit, UpLayer, DownLayer, OutConv
 
 class Predictor(torch.nn.Module):
+    count: int = 0
     def __init__(self, input_nc, output_nc):
         super().__init__()
-
+        self.count = Predictor.count = Predictor.count + 1
         self.input_nc = input_nc
         self.output_nc = output_nc
         self.inc = ConvUnit(input_nc, 64)
