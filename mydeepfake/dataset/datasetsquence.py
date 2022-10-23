@@ -34,8 +34,8 @@ class FaceDatasetSquence(torch.utils.data.Dataset):
                 random.seed(seed)
                 return self.transform(Image.open(x).convert('RGB'))
             dirName, fileNum = file1.rsplit('/', 1)
-            file2 = os.path.join(dirName, '{:0=3}'.format(int(fileNum) + self.skip))
-            file3 = os.path.join(dirName, '{:0=3}'.format(int(fileNum) + self.skip * 2))
+            file2 = os.path.join(dirName, '{:0=5}'.format(int(fileNum) + self.skip))
+            file3 = os.path.join(dirName, '{:0=5}'.format(int(fileNum) + self.skip * 2))
             return Transform(file1), Transform(file2), Transform(file3)
             
         fileA1 = self.filterListA[idx % self.filterListANum]
@@ -51,3 +51,34 @@ class FaceDatasetSquence(torch.utils.data.Dataset):
     
     def __len__(self):
         return max(self.filterListANum, self.filterListBNum)
+
+class FaceDatasetVideo(Dataset):
+    def __init__(self, root, transforms=None, unaligned=False, mode='train', 
+                 video='dataset/videoframe/domain_a', skip=2):
+        self.skip = skip
+        self.remove_num = (skip + 1) * 2
+        self.transform = torchvision.transforms.Compose(transforms)
+        self.unaligned = unaligned
+        all_files = sorted(glob.glob(os.path.join(root, files) + '/*'))
+        self.files = all_files[:-self.remove_num]
+
+    def __getitem__(self, index):
+        file = self.files[index % len(self.files)]
+        seed = 1234
+        item_1, item_2, item_3 = self.get_sequential_data(file, seed)
+        return {'1': item_1, '2': item_2, '3' : item_3}
+
+    def get_sequential_data(self, file1, seed):
+        dir_name, file_num = file1.rsplit('/', 1)
+        file2 = os.path.join(dir_name, '{:0=5}'.format(int(file_num) + self.skip))
+        file3 = os.path.join(dir_name, '{:0=5}'.format(int(file_num) + self.skip * 2))
+        random.seed(seed)
+        item1 = self.transform(Image.open(file1).convert('RGB'))
+        random.seed(seed)
+        item2 = self.transform(Image.open(file2).convert('RGB'))
+        random.seed(seed)
+        item3 = self.transform(Image.open(file3).convert('RGB'))
+        return item1, item2, item3
+        
+    def __len__(self):s
+        return len(self.files)
