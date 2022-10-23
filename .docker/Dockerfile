@@ -6,7 +6,9 @@ USER root
 RUN apt update && apt -y upgrade \
     && apt-get update && apt-get -y upgrade
 RUN apt autoclean
-RUN apt install -y sudo git fonts-takao
+RUN apt install -y sudo git fonts-takao ffmpeg
+# これ入れないとopencvが動かない 
+RUN apt install -y libgl1-mesa-dev
 
 # キャッシュの作成を無効
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -17,5 +19,9 @@ RUN python -m pip install numpy pandas matplotlib
 RUN python -m pip install opencv-python opencv-contrib-python
 # ニューラルネットワーク構築用フレームワーク cpu or gpu (cuda version 11.6 )
 RUN python -m pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
+# MTCNN
+RUN python -m pip install tensorflow mtcnn
+# 進行状況可視化
+RUN python -m pip install tqdm
 # opencv camera 用
 RUN echo 'export QT_X11_NO_MITSHM=1' >> ~/.bashrc
