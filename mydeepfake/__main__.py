@@ -511,6 +511,7 @@ if __name__ == '__main__':
     p.add_argument('--recycle-loss-rate', type=float, default=10., help='')
     p.add_argument('--recurrent-loss-rate', type=float, default=10., help='')
     p.add_argument('--gpu', action='store_true', help='')
+    p.add_argument('--iter-view', type=int, default=10)
 
     p.add_argument('-v', '--verbose', action='store_true', help='学習進行状況表示')
     p.set_defaults(func=trainer)
