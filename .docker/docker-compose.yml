@@ -18,8 +18,8 @@ services:
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      - ..:/ws
+      - ..:/myfaceswap
     devices:
-      - /dev/video2:/dev/video0
+      - /dev/video0:/dev/video0
     ports:
       - 8888:8888
