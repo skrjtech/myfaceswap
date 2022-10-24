@@ -1,5 +1,5 @@
 import torch
-from mydeepfake.models.modelbase import ResidualBlock
+from models.modelbase import ResidualBlock
 
 class Generator(torch.nn.Module):
     count: int = 0
