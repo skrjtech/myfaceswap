@@ -1,9 +1,25 @@
 if __name__ == '__main__':
     import os
     import sys
+    sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
     import cv2
+    import torch
+    import pprint
     import warnings
     import argparse
+    import itertools
+    import torchvision
+    import numpy as np
+    import torchvision
+    import torch.utils
+    import utils as myutils
+    import torch.utils.data
+    from models import Generator, Predictor
+    from dataset.datasetsquence import FaceDatasetVideo
+    from dataset.datasetsquence import FaceDatasetSquence
+    from models import Generator, Predictor, Discriminator
+    from torch.utils.tensorboard import SummaryWriter
+
 
     dirCheck = lambda path: not os.path.isdir(path)
     def makedirs(*args):
@@ -15,21 +31,14 @@ if __name__ == '__main__':
     def saveframe(*args):
             for (frames, path) in args:
                 for i, frame in enumerate(frames):
-                    cv2.imwrite(os.path.join(path, f'{i}.png'), frame)
+                    cv2.imwrite(os.path.join(path, f'{i:0=5}.png'), frame)
     
     def save_loss(writer, train_info, batches_done):
         for k, v in train_info.items():
             writer.add_scalar(k, v, batches_done)
 
     def trainer(args):
-        import torch
-        import pprint
-        import itertools
-        import torchvision
-        import utils as myutils
-        from mydeepfake.dataset.datasetsquence import FaceDatasetSquence
-        from mydeepfake.models import Generator, Predictor, Discriminator
-        from torch.utils.tensorboard import SummaryWriter
+        device = 'cpu'
 
         ioRoot = args.root_dir
         print(f"{ioRoot} ディレクトリの確認中...")
@@ -38,7 +47,7 @@ if __name__ == '__main__':
         makedirs(ioRoot)
         
         print("モデルパラメータ保存用のディレクトリを作成します...")
-        modelpath = os.path.join(ioRoot, 'models')
+        modelpath = os.path.join(ioRoot, args.load_model)
         makedirs(modelpath)
 
         print("ログ用のディレクトリを作成します...")
@@ -48,7 +57,7 @@ if __name__ == '__main__':
         writer = SummaryWriter(log_dir=logger)
 
         netG_A2B = Generator(args.input_ch, args.output_ch)
-        netG_B2A = Generator(args.output_nc, args.input_ch)
+        netG_B2A = Generator(args.output_ch, args.input_ch)
 
         netD_A = Discriminator(args.input_ch)
         netD_B = Discriminator(args.output_ch)
@@ -57,6 +66,7 @@ if __name__ == '__main__':
         netP_B = Predictor(args.output_ch * 2, args.output_ch)
 
         if args.gpu:
+            device = 'cuda'
             netG_A2B.cuda()
             netG_B2A.cuda()
             netD_A.cuda()
@@ -69,7 +79,7 @@ if __name__ == '__main__':
         netD_A.apply(myutils.weights_init_normal)
         netD_B.apply(myutils.weights_init_normal)
 
-        if args.load_model:
+        if len(os.listdir(modelpath)) > 0:
             netG_A2B.load_state_dict(torch.load(os.path.join(modelpath, "netG_A2B.pth"), map_location="cuda:0"), strict=False)
             netG_B2A.load_state_dict(torch.load(os.path.join(modelpath, "netG_B2A.pth"), map_location="cuda:0"), strict=False)
             netD_A.load_state_dict(torch.load(os.path.join(modelpath, "netD_A.pth"), map_location="cuda:0"), strict=False)
@@ -90,13 +100,13 @@ if __name__ == '__main__':
         lr_scheduler_D_A = torch.optim.lr_scheduler.LambdaLR(optimizer_D_A, lr_lambda=myutils.LambdaLR(args.epochs, args.start_epoch, args.decay_epoch).step)
         lr_scheduler_D_B = torch.optim.lr_scheduler.LambdaLR(optimizer_D_B, lr_lambda=myutils.LambdaLR(args.epochs, args.start_epoch, args.decay_epoch).step)
 
-        Tensor = torch.cuda.FloatTensor if not args.gpu else torch.Tensor
-        input_A1 = Tensor(args.batch_size, args.input_ch, args.size, args.size)
-        input_A2 = Tensor(args.batch_size, args.input_ch, args.size, args.size)
-        input_A3 = Tensor(args.batch_size, args.input_ch, args.size, args.size)
-        input_B1 = Tensor(args.batch_size, args.output_ch, args.size, args.size)
-        input_B2 = Tensor(args.batch_size, args.output_ch, args.size, args.size)
-        input_B3 = Tensor(args.batch_size, args.output_ch, args.size, args.size)
+        Tensor = lambda *x: torch.Tensor(*x).to(device)
+        input_A1 = Tensor(args.batch_size, args.input_ch, args.image_size, args.image_size)
+        input_A2 = Tensor(args.batch_size, args.input_ch, args.image_size, args.image_size)
+        input_A3 = Tensor(args.batch_size, args.input_ch, args.image_size, args.image_size)
+        input_B1 = Tensor(args.batch_size, args.output_ch, args.image_size, args.image_size)
+        input_B2 = Tensor(args.batch_size, args.output_ch, args.image_size, args.image_size)
+        input_B3 = Tensor(args.batch_size, args.output_ch, args.image_size, args.image_size)
         target_real = torch.autograd.Variable(Tensor(args.batch_size).fill_(1.0), requires_grad=False)
         target_fake = torch.autograd.Variable(Tensor(args.batch_size).fill_(0.0), requires_grad=False)
 
@@ -109,19 +119,52 @@ if __name__ == '__main__':
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
 
-        domainApath = os.path.join(ioRoot, 'dateset/videoframe/domain_a')
-        if dirCheck(domainApath):
+        domainApath = 'dataset/videoframe/domain_a'
+        if dirCheck(os.path.join(ioRoot, domainApath)):
             print(f"{domainApath} ディレクトリの確認に失敗...")
             print("実行終了")
             sys.exit()
-        domainBpath = os.path.join(ioRoot, 'dateset/videoframe/domain_b')
-        if dirCheck(domainBpath):
+        
+        domainBpath = 'dataset/videoframe/domain_b'
+        if dirCheck(os.path.join(ioRoot, domainBpath)):
             print(f"{domainBpath} ディレクトリの確認に失敗...")
             print("実行終了")
             sys.exit()
+        
         dataset =  FaceDatasetSquence(ioRoot, transforms=transforms, unaligned=False, domainA=domainApath, domainB=domainBpath, skip=args.frame_skip)
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.work_cpu)
 
+        torch.save(netG_A2B.state_dict(), os.path.join(modelpath, 'netG_A2B.pth'))
+        torch.save(netG_B2A.state_dict(), os.path.join(modelpath, 'netG_B2A.pth'))
+        torch.save(netD_A.state_dict(),   os.path.join(modelpath, 'netD_A.pth'))
+        torch.save(netD_B.state_dict(),   os.path.join(modelpath, 'netD_B.pth'))
+        torch.save(netP_A.state_dict(),   os.path.join(modelpath, 'netP_A.pth'))
+        torch.save(netP_B.state_dict(),   os.path.join(modelpath, 'netP_B.pth'))
+
+        batch = next(iter(dataloader))
+
+        fake_A1_clone = None
+        fake_B1_clone = None
+        fake_A2_clone = None
+        fake_B2_clone = None
+        fake_A3_clone = None
+        fake_B3_clone = None
+        real_A1_clone = None
+        real_B1_clone = None
+        real_A2_clone = None
+        real_B2_clone = None
+        real_A3_clone = None
+        real_B3_clone = None
+        recovered_A1 = None
+        recovered_B1 = None
+        same_A1 = None
+        same_B1 = None
+        pred_A3 = None
+        pred_B3 = None
+        fake_A3_pred = None
+        fake_B3_pred = None
+        recovered_A3 = None
+        recovered_B3 = None
         for epoch in range(args.start_epoch, args.epochs):
             for i, batch in enumerate(dataloader):
                 real_A1 = torch.autograd.Variable(input_A1.copy_(batch['A1']))
@@ -278,6 +321,13 @@ if __name__ == '__main__':
             
                 batches_done = (epoch - 1) * len(dataloader) + i
                 save_loss(writer, train_info, batches_done)
+
+                torch.save(netG_A2B.state_dict(), os.path.join(modelpath, 'netG_A2B.pth'))
+                torch.save(netG_B2A.state_dict(), os.path.join(modelpath, 'netG_B2A.pth'))
+                torch.save(netD_A.state_dict(),   os.path.join(modelpath, 'netD_A.pth'))
+                torch.save(netD_B.state_dict(),   os.path.join(modelpath, 'netD_B.pth'))
+                torch.save(netP_A.state_dict(),   os.path.join(modelpath, 'netP_A.pth'))
+                torch.save(netP_B.state_dict(),   os.path.join(modelpath, 'netP_B.pth'))
             
             def makeABA_Or_BAB(img1, img2, img3, path):
                 img1 = img1[0].detach().cpu()
@@ -316,21 +366,8 @@ if __name__ == '__main__':
             lr_scheduler_D_A.step()
             lr_scheduler_D_B.step()
 
-            torch.save(netG_A2B.state_dict(), os.path.join(modelpath, 'netG_A2B.pth'))
-            torch.save(netG_B2A.state_dict(), os.path.join(modelpath, 'netG_B2A.pth'))
-            torch.save(netD_A.state_dict(),   os.path.join(modelpath, 'netD_A.pth'))
-            torch.save(netD_B.state_dict(),   os.path.join(modelpath, 'netD_B.pth'))
-            torch.save(netP_A.state_dict(),   os.path.join(modelpath, 'netP_A.pth'))
-            torch.save(netP_B.state_dict(),   os.path.join(modelpath, 'netP_B.pth'))
-
-
     def generator(args):
-        import torch
-        import torchvision
-        import numpy as np
-        from mydeepfake.dataset.datasetsquence import FaceDatasetVideo
-        from mydeepfake.models import Generator, Predictor
-        
+        device = 'cpu'
         input_domain = os.path.join(args.root_dir, 'detaset', args.video_src)
         video_outputa = os.path.join(args.root_dir, 'output', 'domain_a', args.output)
         video_outputb = os.path.join(args.root_dir, 'output', 'domain_b', args.output)
@@ -342,6 +379,7 @@ if __name__ == '__main__':
         netP_A = Predictor(args.input_ch * 2, args.input_ch)
         netP_B = Predictor(args.output_nc * 2, args.output_ch)
         if args.gpu:
+            device = 'cuda'
             netG_A2B.cuda()
             netG_B2A.cuda()
             netP_A.cuda()
@@ -356,7 +394,7 @@ if __name__ == '__main__':
         netG_B2A.eval()
         netP_A.eval()
         netP_B.eval()
-        Tensor = torch.cuda.FloatTensor if args.gpu else torch.Tensor
+        Tensor = lambda *x: torch.Tensor(*x).to(device)
         input_A1 = Tensor(1, args.input_ch, args.image_size, args.image_size)
         input_A2 = Tensor(1, args.input_ch, args.image_size, args.image_size)
         input_A3 = Tensor(1, args.input_ch, args.image_size, args.image_size)
@@ -422,14 +460,14 @@ if __name__ == '__main__':
         makedirs(ioRoot)
         domain_a = args.video_src
         domain_b = args.video_tgt
-        result_a_path = os.path.join(ioRoot, 'dataset/videoframe/domain_a')
-        result_b_path = os.path.join(ioRoot, 'dataset/videoframe/domain_b')
+        result_a_path = os.path.join(ioRoot, 'dataset/videoframe/domain_a', args.domain_a_outdir)
+        result_b_path = os.path.join(ioRoot, 'dataset/videoframe/domain_b', args.domain_b_outdir)
         print("出力結果用のディレクトリを作成します...")
         makedirs(result_a_path, result_b_path)
 
         print("背景削除の実行準備...")
-        ClearBack = myutils.CallIndexMattingModel()
-        print("背景削除の実行完了")
+        ClearBack = myutils.CallIndexMattingModel(args.limit)
+        print("背景削除の実行準備完了")
         print("背景削除の実行をします...")
         warnings.resetwarnings()
         with warnings.catch_warnings():
@@ -456,8 +494,8 @@ if __name__ == '__main__':
     p = subparser.add_parser('trainer', help='trainer -h --help')    
     p.add_argument('--root-dir', type=str, default='./io_root', help='入出力用ディレクトリ')
     p.add_argument('--epochs', type=int, default=1, help='学習回数')
-    p.add_argument('--start_epoch', type=int, default=0, help='')
-    p.add_argument('--decay_epoch', type=int, default=1, help='')
+    p.add_argument('--start-epoch', type=int, default=0, help='')
+    p.add_argument('--decay-epoch', type=int, default=1, help='')
     p.add_argument('--batch-size', type=int, default=4, help='')
     p.add_argument('--lr', type=float, default=0.001, help='')
     p.add_argument('--beta1', type=float, default=0.5, help='')
@@ -499,8 +537,11 @@ if __name__ == '__main__':
     # make dataset 
     p = subparser.add_parser('makedata', help='makedata -h --help')
     p.add_argument('--root-dir', type=str, default='./io_root', help='入出力用ディレクトリ')
+    p.add_argument('--domain-a-outdir', type=str, default='frames')
+    p.add_argument('--domain-b-outdir', type=str, default='frames')
     p.add_argument('--video-src', type=str, help='ベースとなる人物')
     p.add_argument('--video-tgt', type=str, help='対象となる人物')
+    p.add_argument('--limit', type=int, default=-1, help='フレーム上限')
     p.add_argument('-v', '--verbose', action='store_true', help='学習進行状況表示')
     p.set_defaults(func=makedata)
     p.set_defaults(message='makedata called')
