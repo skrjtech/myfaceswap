@@ -141,30 +141,6 @@ if __name__ == '__main__':
         torch.save(netP_A.state_dict(),   os.path.join(modelpath, 'netP_A.pth'))
         torch.save(netP_B.state_dict(),   os.path.join(modelpath, 'netP_B.pth'))
 
-        batch = next(iter(dataloader))
-
-        fake_A1_clone = None
-        fake_B1_clone = None
-        fake_A2_clone = None
-        fake_B2_clone = None
-        fake_A3_clone = None
-        fake_B3_clone = None
-        real_A1_clone = None
-        real_B1_clone = None
-        real_A2_clone = None
-        real_B2_clone = None
-        real_A3_clone = None
-        real_B3_clone = None
-        recovered_A1 = None
-        recovered_B1 = None
-        same_A1 = None
-        same_B1 = None
-        pred_A3 = None
-        pred_B3 = None
-        fake_A3_pred = None
-        fake_B3_pred = None
-        recovered_A3 = None
-        recovered_B3 = None
         for epoch in range(args.start_epoch, args.epochs):
             for i, batch in enumerate(dataloader):
                 real_A1 = torch.autograd.Variable(input_A1.copy_(batch['A1']))
@@ -329,41 +305,39 @@ if __name__ == '__main__':
                 torch.save(netP_A.state_dict(),   os.path.join(modelpath, 'netP_A.pth'))
                 torch.save(netP_B.state_dict(),   os.path.join(modelpath, 'netP_B.pth'))
 
-                if epoch == 0:
-                    break
-            
-            def makeABA_Or_BAB(img1, img2, img3, path):
-                img1 = img1[0].detach().cpu().unsqueeze(0)
-                img2 = img2[0].detach().cpu().unsqueeze(0)
-                img3 = img3[0].detach().cpu().unsqueeze(0)
-                images = torch.cat((img1, img2, img3))
-                grid = torchvision.utils.make_grid(images)
-                writer.add_image(path, grid)
+                count = (epoch * len(dataloader)) + i
+                def makeABA_Or_BAB(img1, img2, img3, path):
+                    img1 = img1[0].detach().cpu().unsqueeze(0)
+                    img2 = img2[0].detach().cpu().unsqueeze(0)
+                    img3 = img3[0].detach().cpu().unsqueeze(0)
+                    images = torch.cat((img1, img2, img3))
+                    grid = torchvision.utils.make_grid(images)
+                    writer.add_image(path, grid, count)
 
-            def makeP(img1, img2, img3, img4, path):
-                img1 = img1[0].detach().cpu().unsqueeze(0)
-                img2 = img2[0].detach().cpu().unsqueeze(0)
-                img3 = img3[0].detach().cpu().unsqueeze(0)
-                img4 = img4[0].detach().cpu().unsqueeze(0)
-                images = torch.cat((img1, img2, img3, img4))
-                grid = torchvision.utils.make_grid(images)
-                writer.add_image(path, grid)
-            
-            def makeP_A_B(img1, img2, path):
-                img1 = img1[0].detach().cpu().unsqueeze(0)
-                img2 = img2[0].detach().cpu().unsqueeze(0)
-                images = torch.cat((img1, img2))
-                grid = torchvision.utils.make_grid(images)
-                writer.add_image(path, grid)
+                def makeP(img1, img2, img3, img4, path):
+                    img1 = img1[0].detach().cpu().unsqueeze(0)
+                    img2 = img2[0].detach().cpu().unsqueeze(0)
+                    img3 = img3[0].detach().cpu().unsqueeze(0)
+                    img4 = img4[0].detach().cpu().unsqueeze(0)
+                    images = torch.cat((img1, img2, img3, img4))
+                    grid = torchvision.utils.make_grid(images)
+                    writer.add_image(path, grid, count)
+                
+                def makeP_A_B(img1, img2, path):
+                    img1 = img1[0].detach().cpu().unsqueeze(0)
+                    img2 = img2[0].detach().cpu().unsqueeze(0)
+                    images = torch.cat((img1, img2))
+                    grid = torchvision.utils.make_grid(images)
+                    writer.add_image(path, grid, count)
 
-            makeABA_Or_BAB(real_B1_clone, fake_A1_clone, recovered_B1, 'IMG_BAB')
-            makeABA_Or_BAB(real_A1_clone, fake_B1_clone, recovered_A1, 'IMG_ABA')
-            writer.add_image('IMG_IDENTITY_A, ', same_A1[0])
-            writer.add_image('IMG_IDENTITY_B, ', same_B1[0])
-            makeP(pred_A3, real_A1_clone, real_A2_clone, real_A3_clone, 'IMG_PREDA')
-            makeP(pred_B3, real_B1_clone, real_B2_clone, real_B3_clone, 'IMG_PREDB')
-            makeP_A_B(fake_A3_pred, recovered_B3, 'IMG_BAPB')
-            makeP_A_B(fake_B3_pred, recovered_A3, 'IMG_ABPA')
+                makeABA_Or_BAB(real_B1_clone, fake_A1_clone, recovered_B1, 'IMG_BAB')
+                makeABA_Or_BAB(real_A1_clone, fake_B1_clone, recovered_A1, 'IMG_ABA')
+                writer.add_image('IMG_IDENTITY_A, ', same_A1[0])
+                writer.add_image('IMG_IDENTITY_B, ', same_B1[0])
+                makeP(pred_A3, real_A1_clone, real_A2_clone, real_A3_clone, 'IMG_PREDA')
+                makeP(pred_B3, real_B1_clone, real_B2_clone, real_B3_clone, 'IMG_PREDB')
+                makeP_A_B(fake_A3_pred, recovered_B3, 'IMG_BAPB')
+                makeP_A_B(fake_B3_pred, recovered_A3, 'IMG_ABPA')
 
             lr_scheduler_PG.step()
             lr_scheduler_D_A.step()
