@@ -1,5 +1,5 @@
 import torch
-from mydeepfake.models.modelbase import ConvUnit, UpLayer, DownLayer, OutConv
+from models.modelbase import ConvUnit, UpLayer, DownLayer, OutConv
 
 class Predictor(torch.nn.Module):
     count: int = 0
