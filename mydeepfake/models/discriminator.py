@@ -1,5 +1,5 @@
 import torch
-from mydeepfake.models.modelbase import Flatten
+from models.modelbase import Flatten
 
 class Discriminator(torch.nn.Module):
     count : int = 0
