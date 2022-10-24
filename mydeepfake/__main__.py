@@ -134,12 +134,12 @@ if __name__ == '__main__':
         dataset =  FaceDatasetSquence(ioRoot, transforms=transforms, unaligned=False, domainA=domainApath, domainB=domainBpath, skip=args.frame_skip)
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.work_cpu)
 
-        torch.save(netG_A2B.state_dict(), os.path.join(modelpath, 'netG_A2B.pth'))
-        torch.save(netG_B2A.state_dict(), os.path.join(modelpath, 'netG_B2A.pth'))
-        torch.save(netD_A.state_dict(),   os.path.join(modelpath, 'netD_A.pth'))
-        torch.save(netD_B.state_dict(),   os.path.join(modelpath, 'netD_B.pth'))
-        torch.save(netP_A.state_dict(),   os.path.join(modelpath, 'netP_A.pth'))
-        torch.save(netP_B.state_dict(),   os.path.join(modelpath, 'netP_B.pth'))
+        # torch.save(netG_A2B.state_dict(), os.path.join(modelpath, 'netG_A2B.pth'))
+        # torch.save(netG_B2A.state_dict(), os.path.join(modelpath, 'netG_B2A.pth'))
+        # torch.save(netD_A.state_dict(),   os.path.join(modelpath, 'netD_A.pth'))
+        # torch.save(netD_B.state_dict(),   os.path.join(modelpath, 'netD_B.pth'))
+        # torch.save(netP_A.state_dict(),   os.path.join(modelpath, 'netP_A.pth'))
+        # torch.save(netP_B.state_dict(),   os.path.join(modelpath, 'netP_B.pth'))
 
         for epoch in range(args.start_epoch, args.epochs):
             for i, batch in enumerate(dataloader):
