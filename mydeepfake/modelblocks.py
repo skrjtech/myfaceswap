@@ -3,8 +3,8 @@ import torch
 import itertools
 import torchvision
 import mydeepfake.utils
-from mydeepfake.dataset.datasetsquence import FaceDatasetSquence
-from mydeepfake.models import Generator, Predictor, Discriminator
+from dataset.datasetsquence import FaceDatasetSquence
+from models import Generator, Predictor, Discriminator
 
 class GeneratorAndPredictBlock(torch.nn.Module):
     def __init__(self, ioroot: str, batch: int, inp_ch: int, out_ch: int, cuda: bool, load_model: bool) -> None:
