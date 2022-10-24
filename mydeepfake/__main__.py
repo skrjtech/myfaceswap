@@ -318,7 +318,7 @@ if __name__ == '__main__':
                 if i % args.iter_view == 0 and args.verbose:
                     print('-' * 50)
                     pprint.pprint(train_info)
-            
+
                 batches_done = (epoch - 1) * len(dataloader) + i
                 save_loss(writer, train_info, batches_done)
 
@@ -328,27 +328,30 @@ if __name__ == '__main__':
                 torch.save(netD_B.state_dict(),   os.path.join(modelpath, 'netD_B.pth'))
                 torch.save(netP_A.state_dict(),   os.path.join(modelpath, 'netP_A.pth'))
                 torch.save(netP_B.state_dict(),   os.path.join(modelpath, 'netP_B.pth'))
+
+                if epoch == 0:
+                    break
             
             def makeABA_Or_BAB(img1, img2, img3, path):
-                img1 = img1[0].detach().cpu()
-                img2 = img2[0].detach().cpu()
-                img3 = img3[0].detach().cpu()
+                img1 = img1[0].detach().cpu().unsqueeze(0)
+                img2 = img2[0].detach().cpu().unsqueeze(0)
+                img3 = img3[0].detach().cpu().unsqueeze(0)
                 images = torch.cat((img1, img2, img3))
                 grid = torchvision.utils.make_grid(images)
                 writer.add_image(path, grid)
 
             def makeP(img1, img2, img3, img4, path):
-                img1 = img1[0].detach().cpu()
-                img2 = img2[0].detach().cpu()
-                img3 = img3[0].detach().cpu()
-                img4 = img4[0].detach().cpu()
+                img1 = img1[0].detach().cpu().unsqueeze(0)
+                img2 = img2[0].detach().cpu().unsqueeze(0)
+                img3 = img3[0].detach().cpu().unsqueeze(0)
+                img4 = img4[0].detach().cpu().unsqueeze(0)
                 images = torch.cat((img1, img2, img3, img4))
                 grid = torchvision.utils.make_grid(images)
                 writer.add_image(path, grid)
             
             def makeP_A_B(img1, img2, path):
-                img1 = img1[0].detach().cpu()
-                img2 = img2[0].detach().cpu()
+                img1 = img1[0].detach().cpu().unsqueeze(0)
+                img2 = img2[0].detach().cpu().unsqueeze(0)
                 images = torch.cat((img1, img2))
                 grid = torchvision.utils.make_grid(images)
                 writer.add_image(path, grid)
