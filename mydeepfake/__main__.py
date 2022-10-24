@@ -308,10 +308,10 @@ if __name__ == '__main__':
                             + loss_D_real_A1.item() + loss_D_real_A2.item() + loss_D_real_A3.item()
                             + loss_D_fake_B1.item() + loss_D_fake_B2.item() + loss_D_fake_B3.item()
                             +loss_D_real_B1.item() + loss_D_real_B2.item() + loss_D_real_B3.item()),
-                    'loss_DA_fake': loss_D_fake_A1 + loss_D_fake_A2 + loss_D_fake_A3,
-                    'loss_DA_real': loss_D_real_A1 + loss_D_real_A2 + loss_D_real_A3,
-                    'loss_DB_fake': loss_D_fake_B1 + loss_D_fake_B2 + loss_D_fake_B3,
-                    'loss_DB_real': loss_D_real_B1 + loss_D_real_B2 + loss_D_real_B3,
+                    'loss_DA_fake': loss_D_fake_A1.item() + loss_D_fake_A2.item() + loss_D_fake_A3.item(),
+                    'loss_DA_real': loss_D_real_A1.item() + loss_D_real_A2.item() + loss_D_real_A3.item(),
+                    'loss_DB_fake': loss_D_fake_B1.item() + loss_D_fake_B2.item() + loss_D_fake_B3.item(),
+                    'loss_DB_real': loss_D_real_B1.item() + loss_D_real_B2.item() + loss_D_real_B3.item(),
                     
                 }
 
