@@ -1,20 +1,25 @@
+from optparse import Option
 import os
 import glob
 import random
-
+from typing import Optional, List
 import torch
+import torch.utils
+import torch.utils.data
+
 import torchvision
+import torchvision.transforms
 from PIL import Image
 
 class FaceDatasetSquence(torch.utils.data.Dataset):
-    def __init__(self, path: str, transforms: list=None, unaligned: bool=False, mode: str='train', domainA: str='fadg0/video/', domainB: str='faks0/video', skip: int=0) -> None:
+    def __init__(self, path: str, transforms: Optional[List]=None, unaligned: bool=False, mode: str='train', domainA: str='fadg0/video/', domainB: str='faks0/video', skip: int=0) -> None:
         super().__init__()
         self.transform = torchvision.transforms.Compose(transforms)
         self.unaligned = unaligned
         self.mode = mode
         self.skip = skip
-        directoryA = os.listdir(os.path.join(path, domainA))
-        directoryB = os.listdir(os.path.join(path, domainB))
+        directoryA = sorted(os.listdir(os.path.join(path, domainA)))
+        directoryB = sorted(os.listdir(os.path.join(path, domainB)))
         self.filterListA = []
         self.filterListB = []
         self.remove_num = remove_num = (skip + 1) * 2
@@ -34,8 +39,9 @@ class FaceDatasetSquence(torch.utils.data.Dataset):
                 random.seed(seed)
                 return self.transform(Image.open(x).convert('RGB'))
             dirName, fileNum = file1.rsplit('/', 1)
-            file2 = os.path.join(dirName, '{:0=5}'.format(int(fileNum) + self.skip))
-            file3 = os.path.join(dirName, '{:0=5}'.format(int(fileNum) + self.skip * 2))
+            fileNum = fileNum.split('.')[0]
+            file2 = os.path.join(dirName, '{:0=5}.png'.format(int(fileNum) + self.skip))
+            file3 = os.path.join(dirName, '{:0=5}.png'.format(int(fileNum) + self.skip * 2))
             return Transform(file1), Transform(file2), Transform(file3)
             
         fileA1 = self.filterListA[idx % self.filterListANum]
@@ -52,8 +58,8 @@ class FaceDatasetSquence(torch.utils.data.Dataset):
     def __len__(self):
         return max(self.filterListANum, self.filterListBNum)
 
-class FaceDatasetVideo(Dataset):
-    def __init__(self, root, transforms=None, unaligned=False, mode='train', 
+class FaceDatasetVideo(torch.utils.data.Dataset):
+    def __init__(self, root, transforms: Optional[List]=None, unaligned=False, mode='train', 
                  video='dataset/videoframe/domain_a', skip=2):
         self.skip = skip
         self.remove_num = (skip + 1) * 2
@@ -80,5 +86,5 @@ class FaceDatasetVideo(Dataset):
         item3 = self.transform(Image.open(file3).convert('RGB'))
         return item1, item2, item3
         
-    def __len__(self):s
+    def __len__(self):
         return len(self.files)
