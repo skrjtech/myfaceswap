@@ -3,7 +3,7 @@
 
 	"dockerComposeFile": "../.docker/docker-compose.yml",
 	"service": "app",
-	"workspaceFolder": "/ws",
+	"workspaceFolder": "/myfaceswap",
 
 	"extensions": [
 		"ms-azuretools.vscode-docker",
