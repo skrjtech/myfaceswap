@@ -20,7 +20,7 @@ def MasProccess(mask: np.ndarray, org: np.ndarray, size: tuple):
     dist = cv2.bitwise_and(org, mask)
     return dist
 
-def CallIndexMattingModel() -> typing.Any:
+def CallIndexMattingModel(limit: int=-1) -> typing.Any:
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model_ = torchvision.models.segmentation.deeplabv3_resnet101(pretrained=True)
     model_ = model_.to(device)
@@ -37,7 +37,7 @@ def CallIndexMattingModel() -> typing.Any:
         ResultFrame = []
         newFrameAppend = ResultFrame.append
         with torch.no_grad():
-            for frame in tqdm(frames):
+            for frame in tqdm(frames[:limit]):
                 w, h = frame.shape[:2]
                 mask = model(frame)
                 output = MasProccess(mask, frame, (w, h))
