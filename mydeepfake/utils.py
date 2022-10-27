@@ -132,7 +132,6 @@ class ImageProcessBackgraund(object):
         # video data read
         videoCap: cv2.VideoCapture = cv2.VideoCapture(path)
         videoMaxFrame: int = int(videoCap.get(cv2.CAP_PROP_FRAME_COUNT))
-        print("path: ", path, " videoCap.isOpened(): ", videoCap.isOpened())
         if videoCap.isOpened():
             headCount = 0
             # RootDir/video/videofilename/head000/000.png
@@ -148,7 +147,6 @@ class ImageProcessBackgraund(object):
                 Output = self.Masking(frame, self.model(frame))
                 # Check
                 path_ = os.path.join(outputPath, outputFormat.format(headCount, i))
-                print(path_)
                 check = path_.split('/')[:-1]
                 self.CheckDir(os.path.join(*check))
                 # Image no shutsuryoku 
