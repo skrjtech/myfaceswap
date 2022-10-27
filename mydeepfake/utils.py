@@ -99,7 +99,7 @@ class ReplayBuffer():
         return torch.autograd.Variable(torch.cat(to_return))
 
 class ImageProcessBackgraund(object):
-    def __init__(self, rootDir: str, videoFiles: list[str], frameLimit: int=100) -> None:
+    def __init__(self, rootDir: str, videoFiles: List[str], frameLimit: int=100) -> None:
         self.RootDir = rootDir
         self.CheckDir(rootDir)
         self.videoFiles = videoFiles
