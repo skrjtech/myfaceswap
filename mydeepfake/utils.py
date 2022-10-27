@@ -151,7 +151,7 @@ class ImageProcessBackgraund(object):
                 self.CheckDir(os.path.join(*check))
                 # Image no shutsuryoku 
                 cv2.imwrite(path_, Output)
-                if headCount > 0 and headCount % self.frameLimit == 0:
+                if i > 0 and i % self.frameLimit == 0:
                     headCount += 1
 
     def Masking(self, frame, mask):
