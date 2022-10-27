@@ -430,7 +430,10 @@ if __name__ == '__main__':
     
     def makedata(args):
         import utils as myutils
-        myutils.ImageProcessBackgraund(args.root_dir, args.sample_files, args.limit)
+        print(
+            args.root_dir, args.sample_files, args.limit
+        )
+        myutils.ImageProcessBackgraund(args.root_dir, args.sample_files, args.limit)()
         
 
     parser = argparse.ArgumentParser('mydeepfake')

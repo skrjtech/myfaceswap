@@ -140,7 +140,7 @@ class ImageProcessBackgraund(object):
             # RootDir/video/videofilename/headNNN/NNN.png
             outputFormat = "head{:0=3}/{:0=5}.png"
             # 0...Frame All
-            for i in range(videoMaxFrame):
+            for i in tqdm(range(videoMaxFrame)):
                 if i == self.frameLimit: break
                 # video read -> boll, image
                 _, frame = videoCap.read()
