@@ -1,15 +1,14 @@
 FROM python:3.10
-
 ARG DEBIAN_FRONTEND=noninteractive
-
 USER root
-RUN apt update && apt -y upgrade \
-    && apt-get update && apt-get -y upgrade
-RUN apt autoclean
-RUN apt install -y sudo git fonts-takao ffmpeg
-# これ入れないとopencvが動かない 
+RUN apt update && apt -y upgrade
+RUN apt-get update && apt-get -y upgrade
+RUN apt install -y sudo 
+RUN apt install -y git 
+RUN apt install -y fonts-takao 
+RUN apt install -y ffmpeg
+# これ入れないとopencvが正常に作動しない
 RUN apt install -y libgl1-mesa-dev
-
 # キャッシュの作成を無効
 ENV PYTHONDONTWRITEBYTECODE 1
 RUN python -m pip install --upgrade pip setuptools

@@ -430,39 +430,8 @@ if __name__ == '__main__':
     
     def makedata(args):
         import utils as myutils
-        ioRoot = args.root_dir
-        print(f"{ioRoot} ディレクトリの確認中...")
-        if dirCheck(ioRoot): print(f"{ioRoot} ディレクトリの確認に失敗...")
-        print(f"{ioRoot} ディレクトリを作成します...")
-        makedirs(ioRoot)
-        domain_a = args.video_src
-        domain_b = args.video_tgt
-        result_a_path = os.path.join(ioRoot, 'dataset/videoframe/domain_a', args.domain_a_outdir)
-        result_b_path = os.path.join(ioRoot, 'dataset/videoframe/domain_b', args.domain_b_outdir)
-        print("出力結果用のディレクトリを作成します...")
-        makedirs(result_a_path, result_b_path)
-
-        print("背景削除の実行準備...")
-        ClearBack = myutils.CallIndexMattingModel(args.limit)
-        print("背景削除の実行準備完了")
-        print("背景削除の実行をします...")
-        warnings.resetwarnings()
-        with warnings.catch_warnings():
-            warnings.filterwarnings('ignore')
-            domain_a_frame = myutils.Video2Frame(domain_a)
-            domain_b_frame = myutils.Video2Frame(domain_b)
-            res_domain_a_frame = ClearBack(domain_a_frame)
-            res_domain_b_frame = ClearBack(domain_b_frame)
-        print("背景削除の実行完了")
-        print("結果の保存を実行します...")
-        saveframe(
-            (res_domain_a_frame, result_a_path),
-            (res_domain_b_frame, result_b_path)
-        )
-        print("結果の保存完了")
-        print("すべての処理が完了しました")
-        print("お疲れ様でした")
-        print("次の実行に移行して下さい")
+        myutils.ImageProcessBackgraund(args.root_dir, args.sample_files, args.limit)
+        
 
     parser = argparse.ArgumentParser('mydeepfake')
     subparser = parser.add_subparsers()
@@ -515,12 +484,8 @@ if __name__ == '__main__':
     # make dataset 
     p = subparser.add_parser('makedata', help='makedata -h --help')
     p.add_argument('--root-dir', type=str, default='./io_root', help='入出力用ディレクトリ')
-    p.add_argument('--domain-a-outdir', type=str, default='frames')
-    p.add_argument('--domain-b-outdir', type=str, default='frames')
-    p.add_argument('--video-src', type=str, help='ベースとなる人物')
-    p.add_argument('--video-tgt', type=str, help='対象となる人物')
+    p.add_argument('--sample-files', required=True, nargs='*', type=str)
     p.add_argument('--limit', type=int, default=-1, help='フレーム上限')
-    p.add_argument('-v', '--verbose', action='store_true', help='学習進行状況表示')
     p.set_defaults(func=makedata)
     p.set_defaults(message='makedata called')
 

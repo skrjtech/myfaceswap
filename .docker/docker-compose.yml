@@ -1,13 +1,13 @@
 version: '3.9'
 services:
-  app:
+  deepfake:
     tty: true
-    build:
-      context: ../.docker
-      dockerfile: Dockerfile
-    image: skrjtech/faceswap:latest
+    # build:
+    #   context: ../.docker
+    #   dockerfile: Dockerfile
+    image: skrjtech/mydeepfake:latest
     shm_size: '8gb'
-    container_name: faceswap_container
+    container_name: mydeepfake_container
     cap_add:
       - SYS_ADMIN
     security_opt:
@@ -18,8 +18,6 @@ services:
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:ro
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      - ..:/myfaceswap
-    devices:
-      - /dev/video0:/dev/video0
+      - ..:/mydeepfake
     ports:
       - 8888:8888
