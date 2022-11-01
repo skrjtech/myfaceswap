@@ -178,7 +178,10 @@ class RecycleTrainer(object):
         )
     
     def WriterImage(self, path, imgs, index):
-        images = tuple(map(lambda x: x[0].detach().cpu().unsqueeze(0), imgs))
+        images = []
+        for i in range(len(imgs)):
+            x = imgs[i][0].detach().cpu().unsqueeze(0)
+            images.append(x)
         images = torch.cat(images)
         grid = torchvision.utils.make_grid(images)
         self.tensorBoardWriter.add_image(path, grid, index)
@@ -244,8 +247,8 @@ class RecycleTrainer(object):
                 self.tensorBoardWriter.add_scalar('LOSSRECYCLEABA', loss_recycle_ABA.item(), batchIndex)
                 self.tensorBoardWriter.add_scalar('LOSSRECYCLEBAB', loss_recycle_BAB.item(), batchIndex)
                 ## Images
-                self.WriterImage('FAKEB12RECOVEREDA3', (fake_B12, recoveredA3), batchIndex)
-                self.WriterImage('FAKEA12RECOVEREDB3', (fake_A12, recoveredB3), batchIndex)
+                self.WriterImage('FAKEB12RECOVEREDA3', (fakeB1, fakeB2, recoveredA3), batchIndex)
+                self.WriterImage('FAKEA12RECOVEREDB3', (fakeA1, fakeA2, recoveredB3), batchIndex)
                 # Current
                 realA12 = torch.cat((realA1, realA2)); PrealA3 = self.PredictorA(realA12); loss_current_A = self.criterion_recurrent(PrealA3, realA3) * self.currentLoss
                 realB12 = torch.cat((realB1, realB2)); PrealB3 = self.PredictorA(realB12); loss_current_B = self.criterion_recurrent(PrealB3, realB3) * self.currentLoss
@@ -253,8 +256,8 @@ class RecycleTrainer(object):
                 self.tensorBoardWriter.add_scalar('LOSSCURRENTA', loss_current_A.item(), batchIndex)
                 self.tensorBoardWriter.add_scalar('LOSSCURRENTB', loss_current_B.item(), batchIndex)
                 ## Images
-                self.WriterImage('REALA12PREDICTA3', (realA12, PrealA3), batchIndex)
-                self.WriterImage('REALB12PREDICTB3', (realB12, PrealB3), batchIndex)
+                self.WriterImage('REALA12PREDICTA3', (realA1, realA2, PrealA3), batchIndex)
+                self.WriterImage('REALB12PREDICTB3', (realB1, realB2, PrealB3), batchIndex)
                 lossPG = loss_identity_A + loss_identity_B + loss_gan_A2B1 + loss_gan_A2B2 + loss_gan_A2B3 + loss_gan_B2A1 + loss_gan_B2A2 + loss_gan_B2A3 + loss_recycle_ABA + loss_recycle_BAB + loss_current_A + loss_current_B
                 self.tensorBoardWriter.add_scalar('LOSSPG', lossPG.item(), batchIndex)
                 lossPG.backward()
