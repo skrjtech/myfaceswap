@@ -47,6 +47,7 @@ class Video2FramesAndCleanBack(object):
         height = int(videoCap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         videoMaxFrame = videoCap.get(cv2.CAP_PROP_FRAME_COUNT)
         batchSize = int(videoMaxFrame // self.batchSize)
+        print(width, height, videoMaxFrame, batchSize)
 
         def verbose():
             Range = list(range(batchSize))
