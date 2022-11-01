@@ -250,8 +250,8 @@ class RecycleTrainer(object):
                 self.WriterImage('FAKEB12RECOVEREDA3', (fakeB1, fakeB2, recoveredA3), batchIndex)
                 self.WriterImage('FAKEA12RECOVEREDB3', (fakeA1, fakeA2, recoveredB3), batchIndex)
                 # Current
-                realA12 = torch.cat((realA1, realA2)); PrealA3 = self.PredictorA(realA12); loss_current_A = self.criterion_recurrent(PrealA3, realA3) * self.currentLoss
-                realB12 = torch.cat((realB1, realB2)); PrealB3 = self.PredictorA(realB12); loss_current_B = self.criterion_recurrent(PrealB3, realB3) * self.currentLoss
+                realA12 = torch.cat((realA1, realA2), dim=1); PrealA3 = self.PredictorA(realA12); loss_current_A = self.criterion_recurrent(PrealA3, realA3) * self.currentLoss
+                realB12 = torch.cat((realB1, realB2), dim=1); PrealB3 = self.PredictorA(realB12); loss_current_B = self.criterion_recurrent(PrealB3, realB3) * self.currentLoss
                 ## Scaler
                 self.tensorBoardWriter.add_scalar('LOSSCURRENTA', loss_current_A.item(), batchIndex)
                 self.tensorBoardWriter.add_scalar('LOSSCURRENTB', loss_current_B.item(), batchIndex)
