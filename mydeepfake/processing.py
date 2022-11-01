@@ -47,7 +47,6 @@ class Video2FramesAndCleanBack(object):
         height = int(videoCap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         videoMaxFrame = videoCap.get(cv2.CAP_PROP_FRAME_COUNT)
         batchSize = int(videoMaxFrame // self.batchSize)
-        print(width, height, videoMaxFrame, batchSize)
 
         def verbose():
             Range = list(range(batchSize))
@@ -61,20 +60,20 @@ class Video2FramesAndCleanBack(object):
                 for idx in Range:
                     yield idx
         
-
-        for idx in tqdm(range(batchSize)):
-        # for idx in verbose():
-            TensroFrame = []
-            TensorBatch = []
-            while len(TensorBatch) != self.batchSize:
-                ret, frame = videoCap.read()
-                if ret:
-                    TensroFrame.append(frame)
-                    TensorBatch.append(self.Tensor(frame))
-            outTensor = self.model(torch.cat(TensorBatch))
-            Output = self._masking(TensroFrame, outTensor, height, width)
-            for i in range(self.batchSize):
-                cv2.imwrite(targetPath.format((idx * batchSize) + i), Output[i])
+        if videoCap.isOpened():
+            for idx in range(batchSize):
+            # for idx in verbose():
+                TensroFrame = []
+                TensorBatch = []
+                while len(TensorBatch) != self.batchSize:
+                    ret, frame = videoCap.read()
+                    if ret:
+                        TensroFrame.append(frame)
+                        TensorBatch.append(self.Tensor(frame))
+                outTensor = self.model(torch.cat(TensorBatch))
+                Output = self._masking(TensroFrame, outTensor, height, width)
+                for i in range(self.batchSize):
+                    cv2.imwrite(targetPath.format((idx * batchSize) + i), Output[i])
     
     def _masking(self, frames, masks, height, width):
         Output = []
