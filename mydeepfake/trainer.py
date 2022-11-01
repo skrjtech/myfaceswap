@@ -219,19 +219,19 @@ class RecycleTrainer(object):
                 fakeA2 = self.GeneratorB2A(realB2); PfakeA2 = self.DiscriminatorA(fakeA2); loss_gan_B2A2 = self.criterion_GAN(PfakeA2, self.targetReal) * self.ganLoss
                 fakeA3 = self.GeneratorB2A(realB3); PfakeA3 = self.DiscriminatorA(fakeA3); loss_gan_B2A3 = self.criterion_GAN(PfakeA3, self.targetReal) * self.ganLoss
                 ## Scaler
-                self.tensorBoardWriter.add_scalar('LOSSGANNA2B', loss_gan_A2B1.item(), batchIndex)
-                self.tensorBoardWriter.add_scalar('LOSSGANNA2B', loss_gan_A2B2.item(), batchIndex)
-                self.tensorBoardWriter.add_scalar('LOSSGANNA2B', loss_gan_A2B3.item(), batchIndex)
-                self.tensorBoardWriter.add_scalar('LOSSGANNB2A', loss_gan_B2A1.item(), batchIndex)
-                self.tensorBoardWriter.add_scalar('LOSSGANNB2A', loss_gan_B2A2.item(), batchIndex)
-                self.tensorBoardWriter.add_scalar('LOSSGANNB2A', loss_gan_B2A3.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSGANNA2B1', loss_gan_A2B1.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSGANNA2B2', loss_gan_A2B2.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSGANNA2B3', loss_gan_A2B3.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSGANNB2A1', loss_gan_B2A1.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSGANNB2A2', loss_gan_B2A2.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSGANNB2A3', loss_gan_B2A3.item(), batchIndex)
                 ## Images
-                self.WriterImage('REALA2FAKEB', (realA1, fakeB1), batchIndex)
-                self.WriterImage('REALA2FAKEB', (realA2, fakeB2), batchIndex)
-                self.WriterImage('REALA2FAKEB', (realA3, fakeB3), batchIndex)
-                self.WriterImage('REALB2FAKEA', (realB1, fakeA1), batchIndex)
-                self.WriterImage('REALB2FAKEA', (realB2, fakeA2), batchIndex)
-                self.WriterImage('REALB2FAKEA', (realB3, fakeA3), batchIndex)
+                self.WriterImage('REALA2FAKEB1', (realA1, fakeB1), batchIndex)
+                self.WriterImage('REALA2FAKEB2', (realA2, fakeB2), batchIndex)
+                self.WriterImage('REALA2FAKEB3', (realA3, fakeB3), batchIndex)
+                self.WriterImage('REALB2FAKEA1', (realB1, fakeA1), batchIndex)
+                self.WriterImage('REALB2FAKEA2', (realB2, fakeA2), batchIndex)
+                self.WriterImage('REALB2FAKEA3', (realB3, fakeA3), batchIndex)
                 
                 del PfakeB1
                 del PfakeB2
