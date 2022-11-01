@@ -431,6 +431,7 @@ if __name__ == '__main__':
     
     def makedata(args):
         from processing import Video2FramesAndCleanBack
+        Video2FramesAndCleanBack(args.root_dir, args.domaina, args.domainb, args.batch, args.gpu, args.verbose, args.limit)
 
 
     parser = argparse.ArgumentParser('mydeepfake')
@@ -489,6 +490,7 @@ if __name__ == '__main__':
     p.add_argument('--batch', type=int, default=4, help='')
     p.add_argument('--gpu', action='store_true')
     p.add_argument('--limit', type=int, default=-1, help='フレーム上限')
+    p.add_argument('--verbose', action='store_true')
     p.set_defaults(func=makedata)
     p.set_defaults(message='makedata called')
 
