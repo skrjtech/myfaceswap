@@ -201,13 +201,15 @@ class RecycleTrainer(object):
         for epoch in verbose():
             for idx, batch in enumerate(self.dataLoader):
                 batchIndex = (epoch * self.epochs) + idx
-                realA1 = self.Variable(self.inpA1.copy_(batch['A1']))
-                realA2 = self.Variable(self.inpA2.copy_(batch['A2']))
-                realA3 = self.Variable(self.inpA3.copy_(batch['A3']))
-                realB1 = self.Variable(self.inpB1.copy_(batch['B1']))
-                realB2 = self.Variable(self.inpB2.copy_(batch['B2']))
-                realB3 = self.Variable(self.inpB3.copy_(batch['B3']))
-
+                try:
+                    realA1 = self.Variable(self.inpA1.copy_(batch['A1']))
+                    realA2 = self.Variable(self.inpA2.copy_(batch['A2']))
+                    realA3 = self.Variable(self.inpA3.copy_(batch['A3']))
+                    realB1 = self.Variable(self.inpB1.copy_(batch['B1']))
+                    realB2 = self.Variable(self.inpB2.copy_(batch['B2']))
+                    realB3 = self.Variable(self.inpB3.copy_(batch['B3']))
+                except:
+                    break
                 self.optimPG.zero_grad()
                 # Identity
                 sameB1 = self.GeneratorA2B(realB1) 
