@@ -4,6 +4,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
 import itertools
 
 import numpy as np
+from tqdm import tqdm
 
 import torch
 import torch.utils
@@ -33,7 +34,8 @@ class RecycleTrainer(object):
         identityLoss: float,
         ganLoss: float,
         recycleLoss: float,
-        currentLoss: float
+        currentLoss: float,
+        verbose: bool=True
         ) -> None:
 
         self.io_root = io_root
@@ -44,6 +46,7 @@ class RecycleTrainer(object):
         self.ganLoss = ganLoss
         self.recycleLoss = recycleLoss
         self.currentLoss = currentLoss
+        self.verbose = verbose
         self.device = torch.device('cuda:0' if torch.cuda.is_available() and gpu else 'cpu')
         domainA = os.path.join('dataset', 'domainA', 'video/')
         domainB = os.path.join('dataset', 'domainB', 'video/')
@@ -187,7 +190,15 @@ class RecycleTrainer(object):
         self.tensorBoardWriter.add_image(path, grid, index)
     
     def train(self):
-        for epoch in range(self.startEpoch, self.epochs):
+        def verbose():
+            if self.verbose:
+                for i in tqdm(range(self.startEpoch, self.epochs)):
+                    yield i
+            else:
+                for i in range(self.startEpoch, self.epochs):
+                    yield i
+
+        for epoch in verbose():
             for idx, batch in enumerate(self.dataLoader):
                 batchIndex = (epoch * self.epochs) + idx
                 realA1 = self.Variable(self.inpA1.copy_(batch['A1']))
