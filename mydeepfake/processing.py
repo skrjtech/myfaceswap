@@ -68,8 +68,8 @@ class Video2FramesAndCleanBack(object):
                 while len(TensorBatch) != self.batchSize:
                     ret, frame = videoCap.read()
                     if ret:
-                        TensroFrame.append(frame)
-                        TensorBatch.append(self.Tensor(frame))
+                        TensroFrame.append(frame.copy())
+                        TensorBatch.append(self.Tensor(frame.copy()))
                 outTensor = self.model(torch.cat(TensorBatch))
                 Output = self._masking(TensroFrame, outTensor, height, width)
                 for i in range(self.batchSize):
