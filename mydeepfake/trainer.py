@@ -205,6 +205,8 @@ class RecycleTrainer(object):
                 ## Images
                 self.WriterImage('SAMEB1', (realB1, sameB1), batchIndex)
                 self.WriterImage('SAMEA1', (realA1, sameA1), batchIndex)
+                del sameB1
+                del sameA1
                 # GAN
                 fakeB1 = self.GeneratorA2B(realA1); PfakeB1 = self.DiscriminatorB(fakeB1); loss_gan_A2B1 = self.criterion_GAN(PfakeB1, self.targetReal) * self.ganLoss
                 fakeB2 = self.GeneratorA2B(realA2); PfakeB2 = self.DiscriminatorB(fakeB2); loss_gan_A2B2 = self.criterion_GAN(PfakeB2, self.targetReal) * self.ganLoss
@@ -226,6 +228,14 @@ class RecycleTrainer(object):
                 self.WriterImage('REALB2FAKEA', (realB1, fakeA1), batchIndex)
                 self.WriterImage('REALB2FAKEA', (realB2, fakeA2), batchIndex)
                 self.WriterImage('REALB2FAKEA', (realB3, fakeA3), batchIndex)
+                
+                del PfakeB1
+                del PfakeB2
+                del PfakeB3
+                del PfakeA1
+                del PfakeA2
+                del PfakeA3
+                
                 # Recycle
                 fake_B12 = torch.cat((fakeB1, fakeB2), dim=1); PfakeB3 = self.PredictorB(fake_B12); recoveredA3 = self.GeneratorB2A(PfakeB3); loss_recycle_ABA = self.criterion_recycle(recoveredA3, realA3) * self.recycleLoss
                 fake_A12 = torch.cat((fakeA1, fakeA2), dim=1); PfakeA3 = self.PredictorA(fake_A12); recoveredB3 = self.GeneratorA2B(PfakeA3); loss_recycle_BAB = self.criterion_recycle(recoveredB3, realB3) * self.recycleLoss
@@ -249,6 +259,17 @@ class RecycleTrainer(object):
                 lossPG.backward()
                 self.optimPG.step()
 
+                del fake_A12
+                del fake_B12
+                del PfakeB3
+                del PfakeA3
+                del recoveredA3
+                del recoveredB3
+                del realA12
+                del realB12
+                del PrealA3
+                del PrealB3
+
                 # Discriminator A
                 self.optimDA.zero_grad()
                 pred_real_A1 = self.DiscriminatorA(realA1); loss_D_real_A1 = self.criterion_GAN(pred_real_A1, self.targetReal)
@@ -268,6 +289,16 @@ class RecycleTrainer(object):
                 lossDA.backward()
                 self.optimDA.step()
 
+                del pred_real_A1    
+                del pred_real_A2 
+                del pred_real_A3    
+                del fake_A1
+                del fake_A2
+                del fake_A3
+                del pred_fake_A1 
+                del pred_fake_A2
+                del pred_fake_A3
+
                 # Discriminator B
                 self.optimDB.zero_grad()
                 pred_real_B1 = self.DiscriminatorB(realB1); loss_D_real_B1 = self.criterion_GAN(pred_real_B1, self.targetReal)
@@ -286,6 +317,16 @@ class RecycleTrainer(object):
                 loss_D_B = (loss_D_real_B1 + loss_D_real_B2 + loss_D_real_B3 + loss_D_fake_B1 + loss_D_fake_B2 + loss_D_fake_B3) * 0.5
                 loss_D_B.backward()
                 self.optimDB.step()
+
+                del pred_real_B1
+                del pred_real_B2
+                del pred_real_B3
+                del fake_B1
+                del fake_B2
+                del fake_B3
+                del pred_fake_B1
+                del pred_fake_B2
+                del pred_fake_B3
 
                 self.modelSave(epoch, self.modelPath + '.org')
 
