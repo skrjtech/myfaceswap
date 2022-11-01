@@ -66,7 +66,7 @@ class RecycleTrainer(object):
             shuffle=True,
             num_workers=cpuWork
         )
-        writerpath = os.path.join(io_root, 'tensorboard', 'recycle')
+        writerpath = os.path.join(io_root, 'tensorboard', 'recycle', 'train')
         os.makedirs(writerpath, exist_ok=True)
         self.tensorBoardWriter = SummaryWriter(log_dir=writerpath)
 
@@ -200,8 +200,8 @@ class RecycleTrainer(object):
                 loss_identity_B = self.criterion_identity(sameB1, realB1) * self.identityLoss
                 loss_identity_A = self.criterion_identity(sameA1, realA1) * self.identityLoss
                 ## Scaler
-                self.tensorBoardWriter.add_scalars('LOSSIDENTITYB', loss_identity_B.item(), batchIndex)
-                self.tensorBoardWriter.add_scalars('LOSSIDENTITYA', loss_identity_A.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSIDENTITYB', loss_identity_B.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSIDENTITYA', loss_identity_A.item(), batchIndex)
                 ## Images
                 self.WriterImage('SAMEB1', (realB1, sameB1), batchIndex)
                 self.WriterImage('SAMEA1', (realA1, sameA1), batchIndex)
@@ -213,12 +213,12 @@ class RecycleTrainer(object):
                 fakeA2 = self.GeneratorB2A(realB2); PfakeA2 = self.DiscriminatorA(fakeA2); loss_gan_B2A2 = self.criterion_GAN(PfakeA2, self.targetReal) * self.ganLoss
                 fakeA3 = self.GeneratorB2A(realB3); PfakeA3 = self.DiscriminatorA(fakeA3); loss_gan_B2A3 = self.criterion_GAN(PfakeA3, self.targetReal) * self.ganLoss
                 ## Scaler
-                self.tensorBoardWriter.add_scalars('LOSSGANNA2B', loss_gan_A2B1.item(), batchIndex)
-                self.tensorBoardWriter.add_scalars('LOSSGANNA2B', loss_gan_A2B2.item(), batchIndex)
-                self.tensorBoardWriter.add_scalars('LOSSGANNA2B', loss_gan_A2B3.item(), batchIndex)
-                self.tensorBoardWriter.add_scalars('LOSSGANNB2A', loss_gan_B2A1.item(), batchIndex)
-                self.tensorBoardWriter.add_scalars('LOSSGANNB2A', loss_gan_B2A2.item(), batchIndex)
-                self.tensorBoardWriter.add_scalars('LOSSGANNB2A', loss_gan_B2A3.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSGANNA2B', loss_gan_A2B1.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSGANNA2B', loss_gan_A2B2.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSGANNA2B', loss_gan_A2B3.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSGANNB2A', loss_gan_B2A1.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSGANNB2A', loss_gan_B2A2.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSGANNB2A', loss_gan_B2A3.item(), batchIndex)
                 ## Images
                 self.WriterImage('REALA2FAKEB', (realA1, fakeB1), batchIndex)
                 self.WriterImage('REALA2FAKEB', (realA2, fakeB2), batchIndex)
@@ -230,8 +230,8 @@ class RecycleTrainer(object):
                 fake_B12 = torch.cat((fakeB1, fakeB2), dim=1); PfakeB3 = self.PredictorB(fake_B12); recoveredA3 = self.GeneratorB2A(PfakeB3); loss_recycle_ABA = self.criterion_recycle(recoveredA3, realA3) * self.recycleLoss
                 fake_A12 = torch.cat((fakeA1, fakeA2), dim=1); PfakeA3 = self.PredictorA(fake_A12); recoveredB3 = self.GeneratorA2B(PfakeA3); loss_recycle_BAB = self.criterion_recycle(recoveredB3, realB3) * self.recycleLoss
                 ## Scaler
-                self.tensorBoardWriter.add_scalars('LOSSRECYCLEABA', loss_recycle_ABA.item(), batchIndex)
-                self.tensorBoardWriter.add_scalars('LOSSRECYCLEBAB', loss_recycle_BAB.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSRECYCLEABA', loss_recycle_ABA.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSRECYCLEBAB', loss_recycle_BAB.item(), batchIndex)
                 ## Images
                 self.WriterImage('FAKEB12RECOVEREDA3', (fake_B12, recoveredA3), batchIndex)
                 self.WriterImage('FAKEA12RECOVEREDB3', (fake_A12, recoveredB3), batchIndex)
@@ -239,13 +239,13 @@ class RecycleTrainer(object):
                 realA12 = torch.cat((realA1, realA2)); PrealA3 = self.PredictorA(realA12); loss_current_A = self.criterion_recurrent(PrealA3, realA3) * self.currentLoss
                 realB12 = torch.cat((realB1, realB2)); PrealB3 = self.PredictorA(realB12); loss_current_B = self.criterion_recurrent(PrealB3, realB3) * self.currentLoss
                 ## Scaler
-                self.tensorBoardWriter.add_scalars('LOSSCURRENTA', loss_current_A.item(), batchIndex)
-                self.tensorBoardWriter.add_scalars('LOSSCURRENTB', loss_current_B.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSCURRENTA', loss_current_A.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSCURRENTB', loss_current_B.item(), batchIndex)
                 ## Images
                 self.WriterImage('REALA12PREDICTA3', (realA12, PrealA3), batchIndex)
                 self.WriterImage('REALB12PREDICTB3', (realB12, PrealB3), batchIndex)
                 lossPG = loss_identity_A + loss_identity_B + loss_gan_A2B1 + loss_gan_A2B2 + loss_gan_A2B3 + loss_gan_B2A1 + loss_gan_B2A2 + loss_gan_B2A3 + loss_recycle_ABA + loss_recycle_BAB + loss_current_A + loss_current_B
-                self.tensorBoardWriter.add_scalars('LOSSPG', lossPG.item(), batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSPG', lossPG.item(), batchIndex)
                 lossPG.backward()
                 self.optimPG.step()
 
@@ -258,12 +258,12 @@ class RecycleTrainer(object):
                 fake_A2 = self.fakeAbuffer.push_and_pop(fakeA2); pred_fake_A2 = self.DiscriminatorA(fake_A2.detach()); loss_D_fake_A2 = self.criterion_GAN(pred_fake_A2, self.targetFake)
                 fake_A3 = self.fakeAbuffer.push_and_pop(fakeA3); pred_fake_A3 = self.DiscriminatorA(fake_A3.detach()); loss_D_fake_A3 = self.criterion_GAN(pred_fake_A3, self.targetFake)
                 ## Scaler
-                self.tensorBoardWriter.add_scalars('LOSSDREAlDA1', loss_D_real_A1, batchIndex)
-                self.tensorBoardWriter.add_scalars('LOSSDREAlDA2', loss_D_real_A2, batchIndex)
-                self.tensorBoardWriter.add_scalars('LOSSDREAlDA3', loss_D_real_A3, batchIndex)
-                self.tensorBoardWriter.add_scalars('LOSSDFAKEDA2', loss_D_fake_A1, batchIndex)
-                self.tensorBoardWriter.add_scalars('LOSSDFAKEDA3', loss_D_fake_A2, batchIndex)
-                self.tensorBoardWriter.add_scalars('LOSSDFAKEDA4', loss_D_fake_A3, batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSDREAlDA1', loss_D_real_A1, batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSDREAlDA2', loss_D_real_A2, batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSDREAlDA3', loss_D_real_A3, batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSDFAKEDA2', loss_D_fake_A1, batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSDFAKEDA3', loss_D_fake_A2, batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSDFAKEDA4', loss_D_fake_A3, batchIndex)
                 lossDA = ( loss_D_real_A1 + loss_D_real_A2 + loss_D_real_A3 + loss_D_fake_A1 + loss_D_fake_A2 + loss_D_fake_A3 ) * 0.5
                 lossDA.backward()
                 self.optimDA.step()
@@ -277,12 +277,12 @@ class RecycleTrainer(object):
                 fake_B2 = self.fakeBbuffer.push_and_pop(fakeB2); pred_fake_B2 = self.DiscriminatorB(fake_B2.detach()); loss_D_fake_B2 = self.criterion_GAN(pred_fake_B2, self.targetFake)
                 fake_B3 = self.fakeBbuffer.push_and_pop(fakeB3); pred_fake_B3 = self.DiscriminatorB(fake_B3.detach()); loss_D_fake_B3 = self.criterion_GAN(pred_fake_B3, self.targetFake)
                 ## Scalers
-                self.tensorBoardWriter.add_scalars('LOSSREALB1', loss_D_real_B1, batchIndex)
-                self.tensorBoardWriter.add_scalars('LOSSREALB2', loss_D_real_B2, batchIndex)
-                self.tensorBoardWriter.add_scalars('LOSSREALB3', loss_D_real_B3, batchIndex)
-                self.tensorBoardWriter.add_scalars('LOSSFAKEB1', loss_D_fake_B1, batchIndex)
-                self.tensorBoardWriter.add_scalars('LOSSFAKEB2', loss_D_fake_B2, batchIndex)
-                self.tensorBoardWriter.add_scalars('LOSSFAKEB3', loss_D_fake_B3, batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSREALB1', loss_D_real_B1, batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSREALB2', loss_D_real_B2, batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSREALB3', loss_D_real_B3, batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSFAKEB1', loss_D_fake_B1, batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSFAKEB2', loss_D_fake_B2, batchIndex)
+                self.tensorBoardWriter.add_scalar('LOSSFAKEB3', loss_D_fake_B3, batchIndex)
                 loss_D_B = (loss_D_real_B1 + loss_D_real_B2 + loss_D_real_B3 + loss_D_fake_B1 + loss_D_fake_B2 + loss_D_fake_B3) * 0.5
                 loss_D_B.backward()
                 self.optimDB.step()
