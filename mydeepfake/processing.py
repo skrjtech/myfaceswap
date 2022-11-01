@@ -25,7 +25,8 @@ class Video2FramesAndCleanBack(object):
 
         device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         model = torchvision.models.segmentation.deeplabv3_resnet101(pretrained=True)
-        model = model.to(device).eval()
+        model = model.to(device)
+        model.eval()
         preprocessImage = torchvision.transforms.Compose([
             torchvision.transforms.ToPILImage(),
             torchvision.transforms.Resize(320, torchvision.transforms.InterpolationMode.BICUBIC),
@@ -33,8 +34,8 @@ class Video2FramesAndCleanBack(object):
             torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
         self.Tensor = lambda x: preprocessImage(x).unsqueeze(0).to(device)
-        self.model = lambda x: model(x)['out'][0].argmax(0).byte().cpu().numpy()
-    
+        self.model = lambda x: np.concatenate([ output.argmax(0).unsqueeze(0).byte().cpu().numpy() for output in model(x)['out']])
+            
     def __call__(self):
         targetPathDomainA = os.path.join(self.targetPathDomainA, '{:0=5}.png')
         targetPathDomainB = os.path.join(self.targetPathDomainB, '{:0=5}.png')
@@ -61,8 +62,8 @@ class Video2FramesAndCleanBack(object):
                     yield idx
         
         if videoCap.isOpened():
-            for idx in range(batchSize):
-            # for idx in verbose():
+            # for idx in range(batchSize):
+            for idx in verbose():
                 TensroFrame = []
                 TensorBatch = []
                 while len(TensorBatch) != self.batchSize:
@@ -70,19 +71,28 @@ class Video2FramesAndCleanBack(object):
                     if ret:
                         TensroFrame.append(frame.copy())
                         TensorBatch.append(self.Tensor(frame.copy()))
-                outTensor = self.model(torch.cat(TensorBatch))
+                with torch.no_grad():
+                    outTensor = self.model(torch.cat(TensorBatch))
                 Output = self._masking(TensroFrame, outTensor, height, width)
                 for i in range(self.batchSize):
-                    cv2.imwrite(targetPath.format((idx * batchSize) + i), Output[i])
+                    cv2.imwrite(targetPath.format((idx * self.batchSize) + i), Output[i])
+        videoCap.release()
     
     def _masking(self, frames, masks, height, width):
         Output = []
-        masks = np.where(masks > 0, 255, 0).astype(np.uint8)
         for idx in range(self.batchSize):
-            frame = frames[idx]
-            mask = cv2.resize(masks[idx], (height, width))
-            mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+            frame = frames[idx].copy()
+            mask = masks[idx].copy()
+            mask = np.where(mask > 0, 255, 0)
+            mask = cv2.resize(mask.astype(np.uint8), (width, height))
+            mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
             Output.append(
                 cv2.bitwise_and(frame, mask)
             )
         return Output
+    
+    def Imshow(self, name, frames):
+        for frame in frames:
+            cv2.imshow(name, frame)
+            if cv2.waitKey(1) == ord('q'):
+                break

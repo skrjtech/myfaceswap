@@ -45,8 +45,8 @@ class RecycleTrainer(object):
         self.recycleLoss = recycleLoss
         self.currentLoss = currentLoss
         self.device = torch.device('cuda:0' if torch.cuda.is_available() and gpu else 'cpu')
-        domainA = os.path.join(io_root, 'dataset', 'frames', 'domainA')
-        domainB = os.path.join(io_root, 'dataset', 'frames', 'domainB')
+        domainA = os.path.join(io_root, 'dataset', 'domainA', 'video/')
+        domainB = os.path.join(io_root, 'dataset', 'domainB', 'video/')
         self.dataLoader = torch.utils.data.DataLoader(
             FaceDatasetSquence(
                 io_root,
