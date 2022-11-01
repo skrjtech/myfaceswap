@@ -67,7 +67,7 @@ class RecycleTrainer(object):
             num_workers=cpuWork
         )
         writerpath = os.path.join(io_root, 'tensorboard', 'recycle')
-        os.makedirs(writerpath)
+        os.makedirs(writerpath, exit_ok=True)
         self.tensorBoardWriter = SummaryWriter(log_dir=writerpath)
 
         self.GeneratorA2B = Generator(inpC, outC)
@@ -98,7 +98,7 @@ class RecycleTrainer(object):
 
         modelpath = os.path.join(io_root, 'models', 'modelparams.data')
         if not os.path.isdir(os.path.join(*modelpath.split('/')[:-1])):
-            os.makedirs(os.path.join(*modelpath.split('/')[:-1]))
+            os.makedirs(os.path.join(*modelpath.split('/')[:-1]), exit_ok=True)
         self.modelLoad(modelpath)
         self.modelPath = modelpath
 

@@ -19,9 +19,9 @@ class Video2FramesAndCleanBack(object):
         self.limit = limit
 
         self.targetPathDomainA = os.path.join(io_root, 'dataset', 'frames', 'domainA', 'head0')
-        os.makedirs(self.targetPathDomainA)
+        os.makedirs(self.targetPathDomainA, exit_ok=True)
         self.targetPathDomainB = os.path.join(io_root, 'dataset', 'frames', 'domainB', 'head0')
-        os.makedirs(self.targetPathDomainB)
+        os.makedirs(self.targetPathDomainB, exit_ok=True)
 
         device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         model = torchvision.models.segmentation.deeplabv3_resnet101(pretrained=True)
