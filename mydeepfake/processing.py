@@ -35,7 +35,7 @@ class Video2FramesAndCleanBack(object):
         ])
         self.Tensor = lambda x: preprocessImage(x).unsqueeze(0).to(device)
         self.model = lambda x: np.concatenate([ output.argmax(0).unsqueeze(0).byte().cpu().numpy() for output in model(x)['out']])
-            
+
     def __call__(self):
         targetPathDomainA = os.path.join(self.targetPathDomainA, '{:0=5}.png')
         targetPathDomainB = os.path.join(self.targetPathDomainB, '{:0=5}.png')
@@ -80,10 +80,10 @@ class Video2FramesAndCleanBack(object):
     
     def _masking(self, frames, masks, height, width):
         Output = []
+        masks = np.where(masks > 0, 255, 0)
         for idx in range(self.batchSize):
-            frame = frames[idx].copy()
-            mask = masks[idx].copy()
-            mask = np.where(mask > 0, 255, 0)
+            frame = frames[idx]
+            mask = masks[idx]
             mask = cv2.resize(mask.astype(np.uint8), (width, height))
             mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
             Output.append(
