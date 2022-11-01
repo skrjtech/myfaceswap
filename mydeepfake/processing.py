@@ -80,9 +80,8 @@ class Video2FramesAndCleanBack(object):
         masks = np.where(masks > 0, 255, 0).astype(np.uint8)
         for idx in range(self.batchSize):
             frame = frames[idx]
-            mask = cv2.resize(masks[idx], (height, width)).reshape(width, height, 1)
+            mask = cv2.resize(masks[idx], (height, width))
             mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
-            print(frame.shape, mask.shape)
             Output.append(
                 cv2.bitwise_and(frame, mask)
             )
