@@ -76,6 +76,15 @@ class RecycleTrainer(object):
         self.DiscriminatorB = Discriminator(outC)
         self.PredictorA = Predictor(inpC * 2, inpC)
         self.PredictorB = Predictor(outC * 2, outC)
+
+        if gpu:
+            self.GeneratorA2B.to(self.device)
+            self.GeneratorB2A.to(self.device)
+            self.DiscriminatorA.to(self.device)
+            self.DiscriminatorB.to(self.device)
+            self.PredictorA.to(self.device)
+            self.PredictorB.to(self.device)
+
         self.optimPG = torch.optim.Adam(
             itertools.chain(
                 self.GeneratorA2B.parameters(),
