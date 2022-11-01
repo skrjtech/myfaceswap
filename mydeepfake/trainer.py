@@ -99,7 +99,8 @@ class RecycleTrainer(object):
         modelpath = os.path.join(io_root, 'models', 'modelparams.data')
         if not os.path.isdir(os.path.join(*modelpath.split('/')[:-1])):
             os.makedirs(os.path.join(*modelpath.split('/')[:-1]), exist_ok=True)
-        self.modelLoad(modelpath)
+        if os.path.isfile(modelpath):
+            self.modelLoad(modelpath)
         self.modelPath = modelpath
 
         self.Tensor = lambda *x: torch.Tensor(*x).to(self.device)
