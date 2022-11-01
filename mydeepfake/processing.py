@@ -18,9 +18,9 @@ class Video2FramesAndCleanBack(object):
         self.verbose = verbose
         self.limit = limit
 
-        self.targetPathDomainA = os.path.join(io_root, 'dataset', 'frames', 'domainA', 'head0')
+        self.targetPathDomainA = os.path.join(io_root, 'dataset', 'domainA', 'video', 'head0')
         os.makedirs(self.targetPathDomainA, exist_ok=True)
-        self.targetPathDomainB = os.path.join(io_root, 'dataset', 'frames', 'domainB', 'head0')
+        self.targetPathDomainB = os.path.join(io_root, 'dataset', 'domainB', 'video', 'head0')
         os.makedirs(self.targetPathDomainB, exist_ok=True)
 
         device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
