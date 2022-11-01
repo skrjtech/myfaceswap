@@ -103,8 +103,8 @@ class RecycleTrainer(object):
             self.modelLoad(modelpath)
         self.modelPath = modelpath
 
-        self.Tensor = lambda *x: torch.Tensor(*x).to(self.device)
-        self.Variable = lambda x: torch.autograd.Variable(x, requires_grad=False)
+        self.Tensor = lambda *x: torch.Tensor(*x)
+        self.Variable = lambda x: torch.autograd.Variable(x, requires_grad=False).to(self.device)
         inpA = (batchSize, inpC, imgSize, imgSize)
         self.inpA1 = self.Tensor(*inpA)
         self.inpA2 = self.Tensor(*inpA)
