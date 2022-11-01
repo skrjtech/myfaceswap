@@ -76,10 +76,10 @@ class RecycleTrainer(object):
         self.PredictorB = Predictor(outC * 2, outC)
         self.optimPG = torch.optim.Adam(
             itertools.chain(
-                self.GeneratorA2B.parameters()
-                self.GeneratorB2A.parameters()
-                self.PredictorA.parameters()
-                self.PredictorB.parameters()
+                self.GeneratorA2B.parameters(),
+                self.GeneratorB2A.parameters(),
+                self.PredictorA.parameters(),
+                self.PredictorB.parameters(),
             ),
             lr=lr,
             betas=betas
