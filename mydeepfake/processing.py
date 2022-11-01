@@ -60,20 +60,20 @@ class Video2FramesAndCleanBack(object):
                 for idx in Range:
                     yield idx
         
-        if videoCap.isOpened():
-            for idx in range(batchSize):
-            # for idx in verbose():
-                TensroFrame = []
-                TensorBatch = []
-                while len(TensorBatch) != self.batchSize:
-                    ret, frame = videoCap.read()
-                    if ret:
-                        TensroFrame.append(frame)
-                        TensorBatch.append(self.Tensor(frame))
-                outTensor = self.model(torch.cat(TensorBatch))
-                Output = self._masking(TensroFrame, outTensor, height, width)
-                for i in range(self.batchSize):
-                    cv2.imwrite(targetPath.format((idx * batchSize) + i), Output[i])
+
+        for idx in tqdm(range(batchSize)):
+        # for idx in verbose():
+            TensroFrame = []
+            TensorBatch = []
+            while len(TensorBatch) != self.batchSize:
+                ret, frame = videoCap.read()
+                if ret:
+                    TensroFrame.append(frame)
+                    TensorBatch.append(self.Tensor(frame))
+            outTensor = self.model(torch.cat(TensorBatch))
+            Output = self._masking(TensroFrame, outTensor, height, width)
+            for i in range(self.batchSize):
+                cv2.imwrite(targetPath.format((idx * batchSize) + i), Output[i])
     
     def _masking(self, frames, masks, height, width):
         Output = []
