@@ -178,8 +178,9 @@ class RecycleTrainer(object):
         )
     
     def WriterImage(self, path, imgs, index):
-        imgs = tuple(map(lambda x: x.detach().cpu().unsqueeze(0), imgs))
-        grid = torchvision.utils.make_grid(torch.cat(imgs))
+        images = tuple(map(lambda x: x[0].detach().cpu().unsqueeze(0), imgs))
+        images = torch.cat(images)
+        grid = torchvision.utils.make_grid(images)
         self.tensorBoardWriter.add_image(path, grid, index)
     
     def train(self):
