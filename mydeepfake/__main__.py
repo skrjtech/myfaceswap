@@ -20,7 +20,6 @@ if __name__ == '__main__':
     from models import Generator, Predictor, Discriminator
     from torch.utils.tensorboard import SummaryWriter
 
-
     dirCheck = lambda path: not os.path.isdir(path)
     def makedirs(*args):
         for path in args: 
@@ -431,12 +430,8 @@ if __name__ == '__main__':
             video_domain_b.write(image)
     
     def makedata(args):
-        import utils as myutils
-        print(
-            args.root_dir, args.sample_files, args.limit
-        )
-        myutils.ImageProcessBackgraund(args.root_dir, args.sample_files, args.limit)()
-        
+        from processing import Video2FramesAndCleanBack
+
 
     parser = argparse.ArgumentParser('mydeepfake')
     subparser = parser.add_subparsers()
@@ -489,7 +484,10 @@ if __name__ == '__main__':
     # make dataset 
     p = subparser.add_parser('makedata', help='makedata -h --help')
     p.add_argument('--root-dir', type=str, default='./io_root', help='入出力用ディレクトリ')
-    p.add_argument('--sample-files', required=True, nargs='*', type=str)
+    p.add_argument('--domainA', type=str, default='domain_a')
+    p.add_argument('--domainB', type=str, default='domain_b')
+    p.add_argument('--batch', type=int, default=4, help='')
+    p.add_argument('--gpu', action='store_true')
     p.add_argument('--limit', type=int, default=-1, help='フレーム上限')
     p.set_defaults(func=makedata)
     p.set_defaults(message='makedata called')

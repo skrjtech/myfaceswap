@@ -9,13 +9,14 @@ import torchvision
 from tqdm import tqdm
 
 class Video2FramesAndCleanBack(object):
-    def __init__(self, io_root: str, domainA: str, domainB: str, batchSize: int, gpu: bool, verbose: bool):
+    def __init__(self, io_root: str, domainA: str, domainB: str, batchSize: int, gpu: bool, verbose: bool, limit: int):
         
         self.rootDir = io_root
         self.domainA = domainA
         self.domainB = domainB
         self.batchSize = batchSize
         self.verbose = verbose
+        self.limit = limit
 
         self.targetPathDomainA = os.path.join(io_root, 'dataset', 'frames', 'domainA', 'head0')
         os.makedirs(self.targetPathDomainA)
@@ -48,11 +49,15 @@ class Video2FramesAndCleanBack(object):
         batchSize = int(videoMaxFrame // self.batchSize)
 
         def verbose():
+            Range = list(range(batchSize))
+            if self.limit > 0:
+                Range = Range[:self.limit]
+
             if self.verbose:
-                for idx in tqdm(range(batchSize)):
+                for idx in tqdm(Range):
                     yield idx
             else:
-                for idx in range(batchSize):
+                for idx in Range:
                     yield idx
         
         if videoCap.isOpened():
