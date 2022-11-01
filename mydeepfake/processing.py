@@ -61,8 +61,8 @@ class Video2FramesAndCleanBack(object):
                     yield idx
         
         if videoCap.isOpened():
-            # for idx in range(batchSize):
-            for idx in verbose():
+            for idx in range(batchSize):
+            # for idx in verbose():
                 TensroFrame = []
                 TensorBatch = []
                 while len(TensorBatch) != self.batchSize:
