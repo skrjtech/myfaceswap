@@ -113,12 +113,14 @@ if __name__ == '__main__':
         fake_A_buffer = myutils.ReplayBuffer()
         fake_B_buffer = myutils.ReplayBuffer()
 
-        transforms = [ torchvision.transforms.Resize(int(args.image_size * 1.12),
+        transforms = [ 
+            torchvision.transforms.Resize(int(args.image_size * 1.12),
             torchvision.transforms.InterpolationMode.BICUBIC),
             torchvision.transforms.RandomCrop(args.image_size),
             torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
-
+            torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ]
+        
         domainApath = 'dataset/videoframe/domain_a'
         if dirCheck(os.path.join(ioRoot, domainApath)):
             print(f"{domainApath} ディレクトリの確認に失敗...")
