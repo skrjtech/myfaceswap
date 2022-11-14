@@ -1,23 +1,30 @@
 version: '3.9'
 services:
   deepfake:
-    tty: true
-    # build:
-    #   context: ../.docker
-    #   dockerfile: Dockerfile
+    build:
+      context: ../.docker
+      dockerfile: Dockerfile
     image: skrjtech/mydeepfake:latest
-    shm_size: '8gb'
     container_name: mydeepfake_container
-    cap_add:
-      - SYS_ADMIN
-    security_opt:
-      - seccomp:unconfined
+    hostname: deepfake
+    tty: true
+    restart: always
     environment:
       - DISPLAY=$DISPLAY
       - QT_X11_NO_MITSHM=1
     volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      - ..:/mydeepfake
+      - ..:/ws
+      - type: volumes
+        source: sharevol
+        target: /sharevolume
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     ports:
       - 8888:8888
+      
