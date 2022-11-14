@@ -1,26 +1,27 @@
-FROM python:3.10
-ARG DEBIAN_FRONTEND=noninteractive
-USER root
+# image
+FROM debian:latest
+# init process
 RUN apt update && apt -y upgrade
 RUN apt-get update && apt-get -y upgrade
-RUN apt install -y sudo 
-RUN apt install -y git 
-RUN apt install -y fonts-takao 
-RUN apt install -y ffmpeg
+# importante package
+RUN apt install -y software-properties-common
+RUN apt install -y sudo git fonts-takao ffmpeg v4l-utils
+# python 
+RUN apt install -y python3-pip 
+RUN apt install -y build-essential libssl-dev libffi-dev python3-dev
 # これ入れないとopencvが正常に作動しない
 RUN apt install -y libgl1-mesa-dev
-# キャッシュの作成を無効
-ENV PYTHONDONTWRITEBYTECODE 1
-RUN python -m pip install --upgrade pip setuptools
+# pip update
+RUN python3 -m pip install --upgrade pip setuptools
 # 行列統計計算機能 統計計算データベース機能　可視化機能
-RUN python -m pip install numpy pandas matplotlib
+RUN python3 -m pip install numpy pandas matplotlib
 # 画像処理機能
-RUN python -m pip install opencv-python opencv-contrib-python
-# ニューラルネットワーク構築用フレームワーク cpu or gpu (cuda version 11.6 )
-RUN python -m pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
+RUN python3 -m pip install opencv-python opencv-contrib-python
+# ニューラルネットワーク構築用フレームワーク cpu or gpu (cuda version 11.7 )
+RUN python3 -m pip install torch torchvision torchaudio
 # MTCNN
-RUN python -m pip install tensorflow mtcnn
+RUN python3 -m pip install tensorflow mtcnn
 # 進行状況可視化
-RUN python -m pip install tqdm
+RUN python3 -m pip install tqdm
 # opencv camera 用
 RUN echo 'export QT_X11_NO_MITSHM=1' >> ~/.bashrc
