@@ -102,19 +102,17 @@ class FaceDatasetVideo(torchUtilsData.Dataset):
         random.seed(seed)
         file3 = self.transform(Image.open(file3).convert('RGB'))
         return file1, file2, file3
-
     def __getitem__(self, item):
         file = self.files[item % self.filesNum]
         seed = 123
         item1, item2, item3 = self.GetSquentialData(file, seed)
         return {'1': item1, '2': item2, '3': item3}
-
     def __len__(self):
         return self.filesNum
 
 if __name__ == '__main__':
 
-    dataset = FaceDatasetSquence("/ws/ioRoot/dataset/domainA/video", "/ws/ioRoot/dataset/domainB/video", skip=2)
+    dataset = FaceDatasetSquence("/ws/ioRoot/Datasetd/domainA/video", "/ws/ioRoot/dataset/domainB/video", skip=2)
     print(dataset[0])
-    dataset = FaceDatasetVideo("/ws/ioRoot/dataset/domainA/video/head0", skip=2)
+    dataset = FaceDatasetVideo("/ws/ioRoot/Datasetd/domainA/video/head0", skip=2)
     print(dataset[0])
