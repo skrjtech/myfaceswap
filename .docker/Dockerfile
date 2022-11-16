@@ -9,6 +9,7 @@ RUN apt install -y sudo git fonts-takao ffmpeg v4l-utils
 # python 
 RUN apt install -y python3-pip 
 RUN apt install -y build-essential libssl-dev libffi-dev python3-dev
+RUN ln -s /usr/bin/python3 /usr/bin/python
 # これ入れないとopencvが正常に作動しない
 RUN apt install -y libgl1-mesa-dev
 # pip update
