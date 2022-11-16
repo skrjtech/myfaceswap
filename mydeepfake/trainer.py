@@ -10,7 +10,7 @@ import torch
 import torch.utils
 import torch.utils.data
 import torchvision
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter # type: ignore
 
 import utils as myutils
 from dataset import FaceDatasetSquence
@@ -81,6 +81,9 @@ class RecycleTrainer(object):
         self.PredictorB = Predictor(outC * 2, outC)
 
         if gpu:
+            print("-" * 100)
+            print("Device: ", self.device)
+            print("-" * 100)
             self.GeneratorA2B.to(self.device)
             self.GeneratorB2A.to(self.device)
             self.DiscriminatorA.to(self.device)
@@ -209,7 +212,7 @@ class RecycleTrainer(object):
                     realB2 = self.Variable(self.inpB2.copy_(batch['B2']))
                     realB3 = self.Variable(self.inpB3.copy_(batch['B3']))
                 except:
-                    break
+                    continue
                 self.optimPG.zero_grad()
                 # Identity
                 sameB1 = self.GeneratorA2B(realB1) 
@@ -292,9 +295,9 @@ class RecycleTrainer(object):
                 pred_real_A1 = self.DiscriminatorA(realA1); loss_D_real_A1 = self.criterion_GAN(pred_real_A1, self.targetReal)
                 pred_real_A2 = self.DiscriminatorA(realA2); loss_D_real_A2 = self.criterion_GAN(pred_real_A2, self.targetReal)
                 pred_real_A3 = self.DiscriminatorA(realA3); loss_D_real_A3 = self.criterion_GAN(pred_real_A3, self.targetReal)
-                fake_A1 = self.fakeAbuffer.push_and_pop(fakeA1); pred_fake_A1 = self.DiscriminatorA(fake_A1.detach()); loss_D_fake_A1 = self.criterion_GAN(pred_fake_A1, self.targetFake)
-                fake_A2 = self.fakeAbuffer.push_and_pop(fakeA2); pred_fake_A2 = self.DiscriminatorA(fake_A2.detach()); loss_D_fake_A2 = self.criterion_GAN(pred_fake_A2, self.targetFake)
-                fake_A3 = self.fakeAbuffer.push_and_pop(fakeA3); pred_fake_A3 = self.DiscriminatorA(fake_A3.detach()); loss_D_fake_A3 = self.criterion_GAN(pred_fake_A3, self.targetFake)
+                fake_A1 = self.fakeAbuffer.push_and_pop(fakeA1.cpu()).to(self.device); pred_fake_A1 = self.DiscriminatorA(fake_A1.detach()); loss_D_fake_A1 = self.criterion_GAN(pred_fake_A1, self.targetFake)
+                fake_A2 = self.fakeAbuffer.push_and_pop(fakeA2.cpu()).to(self.device); pred_fake_A2 = self.DiscriminatorA(fake_A2.detach()); loss_D_fake_A2 = self.criterion_GAN(pred_fake_A2, self.targetFake)
+                fake_A3 = self.fakeAbuffer.push_and_pop(fakeA3.cpu()).to(self.device); pred_fake_A3 = self.DiscriminatorA(fake_A3.detach()); loss_D_fake_A3 = self.criterion_GAN(pred_fake_A3, self.targetFake)
                 ## Scaler
                 self.tensorBoardWriter.add_scalar('LOSSDREAlDA1', loss_D_real_A1, batchIndex)
                 self.tensorBoardWriter.add_scalar('LOSSDREAlDA2', loss_D_real_A2, batchIndex)
@@ -321,9 +324,9 @@ class RecycleTrainer(object):
                 pred_real_B1 = self.DiscriminatorB(realB1); loss_D_real_B1 = self.criterion_GAN(pred_real_B1, self.targetReal)
                 pred_real_B2 = self.DiscriminatorB(realB2); loss_D_real_B2 = self.criterion_GAN(pred_real_B2, self.targetReal)
                 pred_real_B3 = self.DiscriminatorB(realB3); loss_D_real_B3 = self.criterion_GAN(pred_real_B3, self.targetReal)            
-                fake_B1 = self.fakeBbuffer.push_and_pop(fakeB1); pred_fake_B1 = self.DiscriminatorB(fake_B1.detach()); loss_D_fake_B1 = self.criterion_GAN(pred_fake_B1, self.targetFake)
-                fake_B2 = self.fakeBbuffer.push_and_pop(fakeB2); pred_fake_B2 = self.DiscriminatorB(fake_B2.detach()); loss_D_fake_B2 = self.criterion_GAN(pred_fake_B2, self.targetFake)
-                fake_B3 = self.fakeBbuffer.push_and_pop(fakeB3); pred_fake_B3 = self.DiscriminatorB(fake_B3.detach()); loss_D_fake_B3 = self.criterion_GAN(pred_fake_B3, self.targetFake)
+                fake_B1 = self.fakeBbuffer.push_and_pop(fakeB1.cpu()).to(self.device); pred_fake_B1 = self.DiscriminatorB(fake_B1.detach()); loss_D_fake_B1 = self.criterion_GAN(pred_fake_B1, self.targetFake)
+                fake_B2 = self.fakeBbuffer.push_and_pop(fakeB2.cpu()).to(self.device); pred_fake_B2 = self.DiscriminatorB(fake_B2.detach()); loss_D_fake_B2 = self.criterion_GAN(pred_fake_B2, self.targetFake)
+                fake_B3 = self.fakeBbuffer.push_and_pop(fakeB3.cpu()).to(self.device); pred_fake_B3 = self.DiscriminatorB(fake_B3.detach()); loss_D_fake_B3 = self.criterion_GAN(pred_fake_B3, self.targetFake)
                 ## Scalers
                 self.tensorBoardWriter.add_scalar('LOSSREALB1', loss_D_real_B1, batchIndex)
                 self.tensorBoardWriter.add_scalar('LOSSREALB2', loss_D_real_B2, batchIndex)

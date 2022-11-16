@@ -25,3 +25,4 @@ RUN python3 -m pip install tensorflow mtcnn
 RUN python3 -m pip install tqdm
 # opencv camera 用
 RUN echo 'export QT_X11_NO_MITSHM=1' >> ~/.bashrc
+CMD [ "/bin/bash" ]
