@@ -326,7 +326,7 @@ class RecycleTrainer:
     def train(self):
         batchNum = len(self.TrainDataLoader)
         for epoch in tqdm(range(self.epochStart, self.epochs)):
-            with tqdm(self.TrainDataLoader, total=batchNum, leave=False, unit="batch") as prev:
+            with tqdm(enumerate(self.TrainDataLoader), total=batchNum, leave=False, unit="batch") as prev:
                 for i, batch in prev:
                     prev.set_description(f"[epoch: {epoch:0=3}/{self.epochs:0=3}]|[batch: {i:0=4}/{batchNum:0=4}")
                     self.stepCount = (epoch * batchNum) + i
@@ -415,7 +415,7 @@ class RecycleTrainer:
         # pathB = os.path.join(self.videoWriterPath, "domain", "B2A")
         videoA = cv2.VideoWriter(pathA, cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), 24.0, (self.imageSize * 2, self.imageSize))
         # videoB = cv2.VideoWriter(pathB, cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), 10.0, (self.imageSize * 2, self.imageSize))
-        with tqdm(self.VideoDataloader, total=len(self.VideoDataloader), leave=False) as prev:
+        with tqdm(enumerate(self.VideoDataloader), total=len(self.VideoDataloader), leave=False) as prev:
             for i, batch in prev:
                 AB1, AB2, AB3 = map(lambda x: x.to(self.device), batch.values())
                 # DomainA2B
