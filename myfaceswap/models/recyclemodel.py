@@ -100,7 +100,7 @@ import itertools
 
 import cv2
 import numpy as np
-from tqdm import tqdm
+# from tqdm import tqdm
 from PIL import Image
 import torchvision
 from torch.utils.data import DataLoader
@@ -108,6 +108,25 @@ from myfaceswap.utils import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 from myfaceswap.preprocessing.squence import FaceDatasetSquence, FaceDatasetVideo
 from collections import OrderedDict
+
+def is_env_notebook():
+    """Determine wheather is the environment Jupyter Notebook"""
+    if 'get_ipython' not in globals():
+        # Python shell
+        return False
+    env_name = get_ipython().__class__.__name__
+    if env_name == 'TerminalInteractiveShell':
+        # IPython shell
+        return False
+    # Jupyter Notebook
+    return True
+
+if is_env_notebook():
+    # Jupyter Notebook environment
+    from tqdm import tqdm_notebook as tqdm
+else:
+    # Other shells
+    from tqdm import tqdm
 
 class RecycleTrainer:
     def __init__(
