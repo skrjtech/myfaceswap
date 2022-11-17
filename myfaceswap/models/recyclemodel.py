@@ -107,6 +107,7 @@ from torch.utils.data import DataLoader
 from myfaceswap.utils import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 from myfaceswap.preprocessing.squence import FaceDatasetSquence, FaceDatasetVideo
+from collections import OrderedDict
 
 class RecycleTrainer:
     def __init__(
@@ -320,12 +321,18 @@ class RecycleTrainer:
             "discriminatorB": DBloss.item()
         }
         self.scalersWriter("Losses", losses)
+        return losses
+
     def train(self):
+        batchNum = len(self.TrainDataLoader)
         for epoch in tqdm(range(self.epochStart, self.epochs)):
-            for i, batch in enumerate(tqdm(self.TrainDataLoader)):
-                self.stepCount = (epoch * len(self.TrainDataLoader)) + i
-                self.trainOnBatch(batch)
-                if i == 5: break
+            with tqdm(self.TrainDataLoader, leave=False, unit="batch") as prev:
+                for i, batch in enumerate(prev):
+                    prev.set_description(f"[epoch: {epoch:0=3}/{self.epochs:0=3}]|[batch: {i:0=4}/{batchNum:0=4}")
+                    self.stepCount = (epoch * batchNum) + i
+                    losses = self.trainOnBatch(batch)
+                    prev.set_postfix(OrderedDict(**losses))
+
             # Scheduler
             self.lr_schedulerPG.step()
             self.lr_schedulerDA.step()
@@ -408,24 +415,26 @@ class RecycleTrainer:
         # pathB = os.path.join(self.videoWriterPath, "domain", "B2A")
         videoA = cv2.VideoWriter(pathA, cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), 24.0, (self.imageSize * 2, self.imageSize))
         # videoB = cv2.VideoWriter(pathB, cv2.VideoWriter_fourcc('m', 'p', '4', 'v'), 10.0, (self.imageSize * 2, self.imageSize))
-        for i, batch in enumerate(tqdm(self.VideoDataloader)):
-            AB1, AB2, AB3 = map(lambda x: x.to(self.device), batch.values())
-            # DomainA2B
-            fakeB1 = self.GeneratorA2B(AB1)
-            fakeB2 = self.GeneratorA2B(AB2)
-            fakeB3 = self.GeneratorA2B(AB3)
-            fakeB12 = torch.cat((fakeB1, fakeB2), dim=1)
-            fakeB3Pred = self.PredictB(fakeB12)
-            fakeB3mean = (fakeB3 + fakeB3Pred) / 2.
-            videoA.write(Tensor2Image(AB1[0], fakeB3mean[0]))
-            # # DomainB2A
-            # fakeA1 = self.GeneratorB2A(AB1)
-            # fakeA2 = self.GeneratorB2A(AB2)
-            # fakeA3 = self.GeneratorB2A(AB3)
-            # fakeA12 = torch.cat((fakeA1, fakeA2), dim=1)
-            # fakeA3Pred = self.PredictA(fakeA12)
-            # fakeA3mean = (fakeA3 + fakeA3Pred) / 2.
-            # videoB.write(Tensor2Image(AB3, fakeA3mean))
+        with tqdm(self.VideoDataloader, leave=False) as prev:
+            for i, batch in enumerate(prev):
+                AB1, AB2, AB3 = map(lambda x: x.to(self.device), batch.values())
+                # DomainA2B
+                fakeB1 = self.GeneratorA2B(AB1)
+                fakeB2 = self.GeneratorA2B(AB2)
+                fakeB3 = self.GeneratorA2B(AB3)
+                fakeB12 = torch.cat((fakeB1, fakeB2), dim=1)
+                fakeB3Pred = self.PredictB(fakeB12)
+                fakeB3mean = (fakeB3 + fakeB3Pred) / 2.
+                videoA.write(Tensor2Image(AB1[0], fakeB3mean[0]))
+                # # DomainB2A
+                # fakeA1 = self.GeneratorB2A(AB1)
+                # fakeA2 = self.GeneratorB2A(AB2)
+                # fakeA3 = self.GeneratorB2A(AB3)
+                # fakeA12 = torch.cat((fakeA1, fakeA2), dim=1)
+                # fakeA3Pred = self.PredictA(fakeA12)
+                # fakeA3mean = (fakeA3 + fakeA3Pred) / 2.
+                # videoB.write(Tensor2Image(AB3, fakeA3mean))
+                prev.set_description(f"書き出し中...")
         videoA.release()
         # videoB.release()
     def modelLoad(self):
@@ -509,7 +518,8 @@ class RecycleTrainer:
         self.imageSave(tag, imgs.copy(), self.stepCount)
         self.logWriter.add_image(tag, imgs.transpose(*transpose)/255., self.stepCount)
     def scalersWriter(self, tag: str, values: dict):
-        self.logWriter.add_scalars(tag, values, self.stepCount)
+        for key, val in values.items():
+            self.logWriter.add_scalar(os.path.join(tag, key), val, self.stepCount)
 
 if __name__ == '__main__':
     x = torch.rand(1, 3, 256, 256)
