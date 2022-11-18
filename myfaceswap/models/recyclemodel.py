@@ -97,35 +97,21 @@ class Predictor(torch.nn.Module):
 
 import os
 import itertools
-
 import cv2
 import numpy as np
 # from tqdm import tqdm
 from PIL import Image
 import torchvision
 from torch.utils.data import DataLoader
+import myfaceswap.utils
 from myfaceswap.utils import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 from myfaceswap.preprocessing.squence import FaceDatasetSquence, FaceDatasetVideo
 from collections import OrderedDict
 
-def is_env_notebook():
-    """Determine wheather is the environment Jupyter Notebook"""
-    if 'get_ipython' not in globals():
-        # Python shell
-        return False
-    env_name = get_ipython().__class__.__name__
-    if env_name == 'TerminalInteractiveShell':
-        # IPython shell
-        return False
-    # Jupyter Notebook
-    return True
-
-if is_env_notebook():
-    # Jupyter Notebook environment
-    from tqdm import tqdm_notebook as tqdm
+if myfaceswap.utils.is_env_notebook():
+     from tqdm.notebook import tqdm
 else:
-    # Other shells
     from tqdm import tqdm
 
 class RecycleTrainer:
@@ -273,6 +259,7 @@ class RecycleTrainer:
         # Transforms
         transforms = [torchvision.transforms.Resize(int(imageSize * 1.12),
                                                     torchvision.transforms.InterpolationMode.BICUBIC),
+                      torchvision.transforms.RandomHorizontalFlip(p=0.49),
                       torchvision.transforms.RandomCrop(imageSize),
                       torchvision.transforms.ToTensor(),
                       torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
@@ -351,13 +338,14 @@ class RecycleTrainer:
                     self.stepCount = (epoch * batchNum) + i
                     losses = self.trainOnBatch(batch)
                     prev.set_postfix(OrderedDict(**losses))
+                    self.modelSave(os.path.join(self.modelPath, "batch.pth"))
 
             # Scheduler
             self.lr_schedulerPG.step()
             self.lr_schedulerDA.step()
             self.lr_schedulerDB.step()
             # Model Save
-            self.modelSave(epoch)
+            self.modelSave(os.path.join(self.modelPath, f"epoch_{epoch:0=3}.pth"))
             # Make Movie
             self.MakeVideo(epoch)
 
@@ -476,7 +464,7 @@ class RecycleTrainer:
             self.lr_schedulerPG.load_state_dict(scheduler["PG"])
             self.lr_schedulerDA.load_state_dict(scheduler["DA"])
             self.lr_schedulerDB.load_state_dict(scheduler["DB"])
-    def modelSave(self, stepCount: int):
+    def modelSave(self, path):
         torch.save(
             {
                 "models": {
@@ -498,7 +486,7 @@ class RecycleTrainer:
                     "DB": self.lr_schedulerDB.state_dict()
                 }
             },
-            os.path.join(self.modelPath, f"epoch_{stepCount:0=5}.pth")
+            path
         )
     def ModelTest(self):
         for epoch in tqdm(range(self.epochStart, 2)):

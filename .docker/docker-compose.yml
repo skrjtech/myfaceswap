@@ -24,4 +24,4 @@ services:
               capabilities: [gpu]
     ports:
       - 8888:8888
-      
+    
