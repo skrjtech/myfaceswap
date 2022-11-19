@@ -79,8 +79,8 @@ class Video2FrameAndCleanBack(object):
         path = os.path.join(self.rootDir, 'Datasets', path, 'video', 'head0')
         os.makedirs(path, exist_ok=True)
         for frame in data:
-            path = os.path.join(path, f'{self.saveCount:0=5}.png')
-            cv2.imwrite(path, frame)
+            _path = os.path.join(path, f'{self.saveCount:0=5}.png')
+            cv2.imwrite(_path, frame)
             self.saveCount += 1
 
 if __name__ == '__main__':

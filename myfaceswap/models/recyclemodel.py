@@ -271,7 +271,6 @@ class RecycleTrainer:
         # Transforms
         transforms = [torchvision.transforms.Resize(int(imageSize * 1.),
                                                     torchvision.transforms.InterpolationMode.BICUBIC),
-                      torchvision.transforms.RandomCrop(imageSize),
                       torchvision.transforms.ToTensor(),
                       torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
                       ]
@@ -527,7 +526,7 @@ class RecycleTrainer:
     def scalersWriter(self, tag: str, values: dict):
         for key, val in values.items():
             self.logWriter.add_scalar(os.path.join(tag, key), val, self.stepCount)
-
+            
 if __name__ == '__main__':
     x = torch.rand(1, 3, 256, 256)
     generator = Generator(3, 3, 9)
