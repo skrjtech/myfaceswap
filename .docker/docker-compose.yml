@@ -4,14 +4,15 @@ services:
     build:
       context: ../.docker
       dockerfile: Dockerfile
-    image: skrjtech/mydeepfake:latest
-    container_name: mydeepfake_container
-    hostname: deepfake
+    image: skrjtech/myfaceswap:pycharm
+    container_name: myfaceswap_container
+    hostname: myfaceswap
     tty: true
     restart: always
     environment:
       - DISPLAY=$DISPLAY
-      - QT_X11_NO_MITSHM=1
+    devices:
+      - /dev/video2:/dev/video0
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ..:/ws
@@ -24,4 +25,3 @@ services:
               capabilities: [gpu]
     ports:
       - 8888:8888
-    

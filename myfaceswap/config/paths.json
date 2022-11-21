@@ -1,0 +1,6 @@
+{
+  "Root": "ioRoot",
+  "Datasets": "ioRoot/Datasets",
+  "ModelParams": "ioRoot/Models",
+  "Logs": "ioRoot/Logs"
+}

@@ -247,8 +247,8 @@ class RecycleTrainer:
                     torch.nn.init.constant(m.bias.data, 0.0)
             map(weights_init_normal, models)
         # Buffer
-        self.fakeABuffer = ReplayBuffer(max_size=retentionMaxFrame)
-        self.fakeBBuffer = ReplayBuffer(max_size=retentionMaxFrame)
+        self.fakeABuffer = ReplayBuffer(max_size=retentionMaxFrame, device=self.device)
+        self.fakeBBuffer = ReplayBuffer(max_size=retentionMaxFrame, device=self.device)
         # Const Func
         self.criterionGan = torch.nn.MSELoss()
         self.criterionRecycle = torch.nn.L1Loss()
@@ -257,23 +257,19 @@ class RecycleTrainer:
         # TensorBoard
         self.logWriter = SummaryWriter(self.writerPath)
         # Transforms
-        transforms = [torchvision.transforms.Resize(int(imageSize * 1.12),
-                                                    torchvision.transforms.InterpolationMode.BICUBIC),
-                      torchvision.transforms.RandomHorizontalFlip(p=0.49),
+        transforms = [torchvision.transforms.Resize(int(imageSize * 1.12), torchvision.transforms.InterpolationMode.BICUBIC),
                       torchvision.transforms.RandomCrop(imageSize),
                       torchvision.transforms.ToTensor(),
-                      torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                      ]
+                      torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
         # TrainDataset
         DatasetTrain = FaceDatasetSquence(self.domainA, self.domainB, transforms, skip=skipFrame)
         # TrainDataLoader
         self.TrainDataLoader = DataLoader(DatasetTrain, batchSize, shuffle=False, num_workers=workersCpu)
         # Transforms
-        transforms = [torchvision.transforms.Resize(int(imageSize * 1.),
-                                                    torchvision.transforms.InterpolationMode.BICUBIC),
+        transforms = [torchvision.transforms.Resize(int(imageSize * 1.), torchvision.transforms.InterpolationMode.BICUBIC),
+                      transforms.CenterCrop(imageSize),
                       torchvision.transforms.ToTensor(),
-                      torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-                      ]
+                      torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
         # OutputVideoDatasets
         DatasetDecoderVideo = FaceDatasetVideo(os.path.join(self.domainA, 'head0'), transforms)
         # OutputVideoDataLoader
@@ -526,7 +522,348 @@ class RecycleTrainer:
     def scalersWriter(self, tag: str, values: dict):
         for key, val in values.items():
             self.logWriter.add_scalar(os.path.join(tag, key), val, self.stepCount)
-            
+
+from myfaceswap.trainer.trainerbase import TrainerWrapper
+class RecycleModel(TrainerWrapper):
+    def __init__(
+            self,
+            rootDir: str,
+            source: str,
+            target: str,
+            inpC: int=3,
+            outC: int=3,
+            imageSize: int=256,
+            maxFrame: int=50,
+            skipFrame: int=2,
+            identityLoss: float=5.,
+            ganLoss: float=5.,
+            recycleLoss: float=10.,
+            currentLoss: float=10.,
+            **kwargs
+    ) -> None:
+        """
+        :param rootDir: 'ioRoot/'
+        :param source:  'Datasets/domainA/'
+        :param target:  'Datasets/domainA/'
+        :param inpC:
+        :param outC:
+        :param imageSize:
+        :param maxFrame:
+        :param identityLoss:
+        :param ganLoss:
+        :param recycleLoss:
+        :param currentLoss:
+        :param kwargs:
+        """
+        super(RecycleModel, self).__init__(**kwargs)
+
+        self.ioRoot = rootDir
+        self.source = source
+        self.target = target
+        self.inpC = inpC
+        self.outC = outC
+
+        self.identityLoss = identityLoss
+        self.ganLoss = ganLoss
+        self.recycleLoss = recycleLoss
+        self.currentLoss = currentLoss
+
+        self.GA2B = Generator(inpC, outC)
+        self.GB2A = Generator(outC, inpC)
+        self.DisA = Discriminator(inpC)
+        self.DisB = Discriminator(outC)
+        self.PredA = Predictor(inpC * 2, inpC)
+        self.PredB = Predictor(outC * 2, outC)
+
+        def weights_init_normal(m):
+            classname = m.__class__.__name__
+            if classname.find('Conv') != -1:
+                torch.nn.init.normal(m.weight.data, 0.0, 0.02)
+            elif classname.find('BatchNorm2d') != -1:
+                torch.nn.init.normal(m.weight.data, 1.0, 0.02)
+                torch.nn.init.constant(m.bias.data, 0.0)
+
+        self.GA2B.apply(weights_init_normal)
+        self.GB2A.apply(weights_init_normal)
+        self.DisA.apply(weights_init_normal)
+        self.DisB.apply(weights_init_normal)
+        self.PredA.apply(weights_init_normal)
+        self.PredB.apply(weights_init_normal)
+
+        if self.gpu:
+            self.GA2B.cuda()
+            self.GB2A.cuda()
+            self.DisA.cuda()
+            self.DisB.cuda()
+            self.PredA.cuda()
+            self.PredB.cuda()
+
+        self.optimzerPG = torch.optim.Adam(
+            itertools.chain(
+                self.GA2B.parameters(), self.GB2A.parameters(),
+                self.DisA.parameters(), self.DisB.parameters(),
+                self.PredA.parameters(), self.PredB.parameters()),
+            lr=self.learningRate, betas=self.betas
+        )
+        self.optimzerDA = torch.optim.Adam(
+            self.DisA.parameters(),
+            lr=self.learningRate, betas=self.betas
+        )
+        self.optimzerDB = torch.optim.Adam(
+            self.DisB.parameters(),
+            lr=self.learningRate, betas=self.betas
+        )
+
+        def LambdaLR(epochs, offset, decayStartEpoch):
+            def step(epoch):
+                val = max(0., epoch + offset - decayStartEpoch) / (epochs - decayStartEpoch)
+                return 1. - val
+            return step
+
+        self.schedulerPG = torch.optim.lr_scheduler.LambdaLR(self.optimzerPG, lr_lambda=LambdaLR(self.epochs, self.epochStart, self.epochDecay))
+        self.schedulerDA = torch.optim.lr_scheduler.LambdaLR(self.optimzerDA, lr_lambda=LambdaLR(self.epochs, self.epochStart, self.epochDecay))
+        self.schedulerDB = torch.optim.lr_scheduler.LambdaLR(self.optimzerDB, lr_lambda=LambdaLR(self.epochs, self.epochStart, self.epochDecay))
+
+        self.modelSavePath = os.path.join(rootDir, 'model', 'recycle')
+        if self.loadModel:
+            self.ModelLoad()
+
+        self.fakeAbuffer = myfaceswap.utils.ReplayBuffer(maxFrame, device=self.device)
+        self.fakeBbuffer = myfaceswap.utils.ReplayBuffer(maxFrame, device=self.device)
+
+        self.criterionGan = torch.nn.MSELoss()
+        self.criterionRecycle = torch.nn.L1Loss()
+        self.criterionIdentity = torch.nn.L1Loss()
+        self.criterionRecurrent = torch.nn.L1Loss()
+
+        self.logWriter = SummaryWriter(os.path.join(rootDir, 'Logs', 'recycle'))
+
+        # Transforms
+        transforms = [
+            torchvision.transforms.Resize(int(imageSize * 1.12), torchvision.transforms.InterpolationMode.BICUBIC),
+            torchvision.transforms.RandomCrop(imageSize),
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+        # TrainDataset
+        DatasetTrain = FaceDatasetSquence(source, target, transforms, skip=skipFrame)
+        # TrainDataLoader
+        self.dataloder = DataLoader(DatasetTrain, self.batchSize, shuffle=False, num_workers=self.cpuWorkers)
+        # Transforms
+        transforms = [
+            torchvision.transforms.Resize(int(imageSize * 1.), torchvision.transforms.InterpolationMode.BICUBIC),
+            transforms.CenterCrop(imageSize),
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+        # OutputVideoDatasets
+        DatasetDecoderVideo = FaceDatasetVideo(os.path.join(self.source, 'head0'), transforms)
+        # OutputVideoDataLoader
+        self.VideoDataloader = DataLoader(DatasetDecoderVideo, 1, shuffle=False, num_workers=self.cpuWorkers)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.logWriter.close()
+
+    def ModelLoad(self, path: str=None):
+        try:
+            checkpoint = torch.load(os.path.join(self.modelSavePath, 'everyEpoch.pth'))
+        except:
+            checkpoint = torch.load(os.path.join(self.modelSavePath, 'everyBatch.pth'))
+
+        model = checkpoint['model']
+        self.GA2B.load_state_dict(model['GA2B'])
+        self.GB2A.load_state_dict(model['GB2A'])
+        self.DisA.load_state_dict(model['DisA'])
+        self.DisB.load_state_dict(model['DisB'])
+        self.PredA.load_state_dict(model['PredA'])
+        self.PredB.load_state_dict(model['PredB'])
+        optim = checkpoint['optim']
+        self.optimzerPG.load_state_dict(optim['PG'])
+        self.optimzerDA.load_state_dict(optim['DA'])
+        self.optimzerDB.load_state_dict(optim['DB'])
+        scheduler = checkpoint['scheduler']
+        self.schedulerPG.load_state_dict(scheduler['PG'])
+        self.schedulerDA.load_state_dict(scheduler['DA'])
+        self.schedulerDB.load_state_dict(scheduler['DB'])
+
+    def ModelSave(self, path: str=None):
+        path = os.path.join(self.modelSavePath, path)
+        torch.save(
+            {
+                'model': {
+                    'GA2B': self.GA2B.state_dict(), 'Gb2A': self.GB2A.state_dict(),
+                    'DisA': self.DisA.state_dict(), 'DisB': self.DisB.state_dict(),
+                    'PredA': self.PredA.state_dict(), 'PredB': self.PredB.state_dict()
+                },
+                'optim': {
+                    'PG': self.optimzerPG.state_dict(),
+                    'DA': self.optimzerDA.state_dict(),
+                    'DB': self.optimzerDB.state_dict()
+                },
+                'scheduler': {
+                    'PG': self.schedulerPG.state_dict(),
+                    'DA': self.schedulerDA.state_dict(),
+                    'DB': self.schedulerDB.state_dict()
+                }
+            }
+            , path
+        )
+
+    def TrainOnBatch(self, batch: dict, index: int=0):
+
+        LOSSES = {}
+
+        A1, A2, A3, B1, B2, B3 = map(lambda x: torch.autograd.Variable(x).to(self.device), batch.values())
+        Real = torch.autograd.Variable(torch.Tensor(self.batchSize).fill_(1.), requires_grad=True).to(self.device)
+        Fake = torch.autograd.Variable(torch.Tensor(self.batchSize).fill_(0.), requires_grad=True).to(self.device)
+
+        ##### 生成器A2B、B2Aの処理 #####
+        self.optimzerPG.zero_grad()
+
+        # 同一性損失の計算（Identity loss)
+        # G_A2B(B)はBと一致
+        same_B1 = self.GA2B(B1)
+        loss_identity_B = self.criterionIdentity(same_B1, B1) * self.identityLoss
+        # G_B2A(A)はAと一致
+        same_A1 = self.GB2A(A1)
+        loss_identity_A = self.criterionIdentity(same_A1, A1) * self.identityLoss
+
+        LOSSES['SAMEA1'] = loss_identity_A.item()
+        LOSSES['SAMEB1'] = loss_identity_B.item()
+
+        # 敵対的損失（GAN loss）
+        fake_B1 = self.GA2B(A1)
+        pred_fake_B1 = self.DisB(fake_B1)
+        loss_GAN_A2B1 = self.criterionGan(pred_fake_B1, Real) * self.ganLoss
+        LOSSES["GAN_A2B1"] = loss_GAN_A2B1.item()
+
+        fake_B2 = self.GA2B(A2)
+        pred_fake_B2 = self.DisB(fake_B2)
+        loss_GAN_A2B2 = self.criterionGan(pred_fake_B2, Real) * self.ganLoss
+        LOSSES['GAN_A2B2'] = loss_GAN_A2B2.item()
+
+        fake_B3 = self.GA2B(A3)
+        pred_fake_B3 = self.DisB(fake_B3)
+        loss_GAN_A2B3 = self.criterionGan(pred_fake_B3, Real) * self.ganLoss
+        LOSSES['GAN_A2B3'] = loss_GAN_A2B3.item()
+
+        fake_A1 = self.GB2A(B1)
+        pred_fake_A1 = self.DisA(fake_A1)
+        loss_GAN_B2A1 = self.criterionGan(pred_fake_A1, Real) * self.ganLoss
+        LOSSES['GAN_B2A1'] = loss_GAN_B2A1.item()
+
+        fake_A2 = self.GB2A(B2)
+        pred_fake_A2 = self.DisA(fake_A2)
+        loss_GAN_B2A2 = self.criterionGan(pred_fake_A2, Real) * self.ganLoss
+        LOSSES['GAN_B2A2'] = loss_GAN_B2A2.item()
+
+        fake_A3 = self.GB2A(B3)
+        pred_fake_A3 = self.DisA(fake_A3)
+        loss_GAN_B2A3 = self.criterionGan(pred_fake_A3, Real) * self.ganLoss
+        LOSSES['GAN_B2A3'] = loss_GAN_B2A3.item()
+
+        # サイクル一貫性損失（Cycle-consistency loss）
+        fake_B12 = torch.cat((fake_B1, fake_B2), dim=1)
+        fake_B3_pred = self.PredB(fake_B12)
+        recovered_A3 = self.GB2A(fake_B3_pred)
+        loss_recycle_ABA = self.criterionRecycle(recovered_A3, A3) * self.recycleLoss
+        LOSSES["RECYCLE_ABA"] = loss_recycle_ABA.item()
+
+        fake_A12 = torch.cat((fake_A1, fake_A2), dim=1)
+        fake_A3_pred = self.PredA(fake_A12)
+        recovered_B3 = self.GA2B(fake_A3_pred)
+        loss_recycle_BAB = self.criterionRecycle(recovered_B3, B3) * self.recycleLoss
+        LOSSES["RECYCLE_BAB"] = loss_recycle_BAB.item()
+
+        # Recurrent loss
+        A12 = torch.cat((A1, A2), dim=1)
+        pred_A3 = self.PredA(A12)
+        loss_recurrent_A = self.criterionRecurrent(pred_A3, A3) * self.currentLoss
+        LOSSES['RECURRENT_A'] = loss_recurrent_A.item()
+
+        B12 = torch.cat((B1, B2), dim=1)
+        pred_B3 = self.PredB(B12)
+        loss_recurrent_B = self.criterionRecurrent(pred_B3, B3) * self.currentLoss
+        LOSSES['RECURRENT_B'] = loss_recurrent_B.itme()
+
+        # 生成器の合計損失関数（Total loss）
+        loss_PG = loss_identity_A + loss_identity_B + loss_GAN_A2B1 + loss_GAN_A2B2 + loss_GAN_A2B3 + loss_GAN_B2A1 + loss_GAN_B2A2 + loss_GAN_B2A3 \
+                  + loss_recycle_ABA + loss_recycle_BAB + loss_recurrent_A + loss_recurrent_B
+        LOSSES['LOSS_PG'] = loss_PG.item()
+        loss_PG.backward()
+        self.optimzerPG.step()
+
+        self.optimzerDA.zero_grad()
+
+        # ドメインAの本物画像の識別結果（Real loss）
+        pred_A1 = self.DisA(A1)
+        loss_D_A1 = self.criterionGan(pred_A1, Real)
+        pred_A2 = self.DisA(A2)
+        loss_D_A2 = self.criterionGan(pred_A2, Real)
+        pred_A3 = self.DisA(A3)
+        loss_D_A3 = self.criterionGan(pred_A3, Real)
+        LOSSES['LOSS_D_Real_A1'] = loss_D_A1.item()
+        LOSSES['LOSS_D_Real_A2'] = loss_D_A2.item()
+        LOSSES['LOSS_D_Real_A3'] = loss_D_A3.item()
+
+        # ドメインAの生成画像の識別結果（Fake loss）
+        fake_A1 = self.fakeAbuffer.push_and_pop(fake_A1)
+        pred_fake_A1 = self.DisA(fake_A1)
+        loss_D_fake_A1 = self.criterionGan(pred_fake_A1, Fake)
+
+        fake_A2 = self.fakeAbuffer.push_and_pop(fake_A2)
+        pred_fake_A2 = self.DisA(fake_A2)
+        loss_D_fake_A2 = self.criterionGan(pred_fake_A2, Fake)
+
+        fake_A3 = self.fakeAbuffer.push_and_pop(fake_A3)
+        pred_fake_A3 = self.DisA(fake_A3)
+        loss_D_fake_A3 = self.criterionGan(pred_fake_A3, Fake)
+        LOSSES['LOSS_D_Fake_A1'] = loss_D_fake_A1.item()
+        LOSSES['LOSS_D_Fake_A2'] = loss_D_fake_A2.item()
+        LOSSES['LOSS_D_Fake_A3'] = loss_D_fake_A3.item()
+
+        # 識別器（ドメインA）の合計損失（Total loss）
+        loss_D_A = (loss_D_A1 + loss_D_A2 + loss_D_A3 + loss_D_fake_A1 + loss_D_fake_A2 + loss_D_fake_A3) * 0.5
+        LOSSES['LOSS_D_A'] = loss_D_A.item()
+        loss_D_A.backward()
+        self.optimzerDA.step()
+
+        ##### ドメインBの識別器 #####
+        self.optimzerDB.zero_grad()
+
+        # ドメインBの本物画像の識別結果（Real loss）
+        pred_B1 = self.DisB(B1)
+        loss_D_B1 = self.criterionGan(pred_B1, Real)
+        pred_B2 = self.DisB(B2)
+        loss_D_B2 = self.criterionGan(pred_B2, Real)
+        pred_B3 = self.DisB(B3)
+        loss_D_B3 = self.criterionGan(pred_B3, Real)
+        LOSSES['LOSS_D_Real_B1'] = loss_D_B1.item()
+        LOSSES['LOSS_D_Real_B2'] = loss_D_B2.item()
+        LOSSES['LOSS_D_Real_B3'] = loss_D_B3.item()
+
+        # ドメインBの生成画像の識別結果（Fake loss）
+        fake_B1 = self.fakeBbuffer.push_and_pop(fake_B1)
+        pred_fake_B1 = self.DisB(fake_B1)
+        loss_D_fake_B1 = self.criterionGan(pred_fake_B1, Fake)
+
+        fake_B2 = self.fakeBbuffer.push_and_pop(fake_B2)
+        pred_fake_B2 = self.DisB(fake_B2)
+        loss_D_fake_B2 = self.criterionGan(pred_fake_B2, Fake)
+
+        fake_B3 = self.fakeBbuffer.push_and_pop(fake_B3)
+        pred_fake_B3 = self.DisB(fake_B3)
+        loss_D_fake_B3 = self.criterionGan(pred_fake_B3, Fake)
+        LOSSES['LOSS_D_Fake_B1'] = loss_D_fake_B1.item()
+        LOSSES['LOSS_D_Fake_B2'] = loss_D_fake_B2.item()
+        LOSSES['LOSS_D_Fake_B3'] = loss_D_fake_B3.item()
+
+        # 識別器（ドメインB）の合計損失（Total loss）
+        loss_D_B = (loss_D_B1 + loss_D_B2 + loss_D_B3 + loss_D_fake_B1 + loss_D_fake_B2 + loss_D_fake_B3) * 0.5
+        LOSSES['LOSS_D_B'] = loss_D_B.item()
+        loss_D_B.backward()
+        self.optimzerDB.step()
+
+        return {"LOSS_PG": loss_PG.item(), "LOSS_DA": loss_D_A.item(), "LOSS_DB": loss_D_B.item()}
+
 if __name__ == '__main__':
     x = torch.rand(1, 3, 256, 256)
     generator = Generator(3, 3, 9)
