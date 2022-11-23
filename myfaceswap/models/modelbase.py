@@ -74,6 +74,103 @@ class OutConv(torch.nn.Module):
     def forward(self, x):
         return self.conv(x)
 
+"""
+Recycle 
+"""
+class Generator(torch.nn.Module):
+    def __init__(self, input_nc, output_nc, n_residual_blocks=9):
+        super(Generator, self).__init__()
+        self.modelStage1 = torch.nn.Sequential(
+            torch.nn.ReflectionPad2d(3),
+            torch.nn.Conv2d(input_nc, 64, 7),
+            torch.nn.InstanceNorm2d(64),
+            torch.nn.ReLU(inplace=True),
+
+            torch.nn.Conv2d(64, 128, 3, stride=2, padding=1),
+            torch.nn.InstanceNorm2d(128),
+            torch.nn.ReLU(inplace=True),
+
+            torch.nn.Conv2d(128, 256, 3, stride=2, padding=1),
+            torch.nn.InstanceNorm2d(256),
+            torch.nn.ReLU(inplace=True)
+        )
+        residualBlocks = []
+        for _ in range(n_residual_blocks):
+            residualBlocks.append(ResidualBlock(256))
+        self.modelStage2 = torch.nn.Sequential(*residualBlocks)
+        self.modelStage3 = torch.nn.Sequential(
+            torch.nn.ConvTranspose2d(256, 128, 3, stride=2, padding=1, output_padding=1),
+            torch.nn.InstanceNorm2d(128),
+            torch.nn.ReLU(inplace=True),
+            torch.nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1),
+            torch.nn.InstanceNorm2d(64),
+            torch.nn.ReLU(inplace=True),
+            torch.nn.ReflectionPad2d(3),
+            torch.nn.Conv2d(64, output_nc, 7),
+            torch.nn.Tanh()
+        )
+    def forward(self, x):
+        x = self.modelStage1(x)
+        x = self.modelStage2(x)
+        return self.modelStage3(x)
+
+class Discriminator(torch.nn.Module):
+    def __init__(self, input_nc):
+        super(Discriminator, self).__init__()
+        self.model = torch.nn.Sequential(
+            torch.nn.Conv2d(input_nc, 64, 4, stride=2, padding=1),
+            torch.nn.LeakyReLU(0.2, inplace=True),
+
+            torch.nn.Conv2d(64, 128, 4, stride=2, padding=1),
+            torch.nn.InstanceNorm2d(128),
+            torch.nn.LeakyReLU(0.2, inplace=True),
+
+            torch.nn.Conv2d(128, 256, 4, stride=2, padding=1),
+            torch.nn.InstanceNorm2d(256),
+            torch.nn.LeakyReLU(0.2, inplace=True),
+
+            torch.nn.Conv2d(256, 512, 4, padding=1),
+            torch.nn.InstanceNorm2d(512),
+            torch.nn.LeakyReLU(0.2, inplace=True),
+
+            torch.nn.Conv2d(512, 1, 4, padding=1)
+        )
+        self.flatten = Flatten()
+    def forward(self, x):
+        x = self.model(x)
+        x = torch.nn.functional.avg_pool2d(x, x.size()[2:])
+        return self.flatten(x)
+
+class Predictor(torch.nn.Module):
+    def __init__(self, input_nc, output_nc):
+        super(Predictor, self).__init__()
+        self.input_nc = input_nc
+        self.output_nc = output_nc
+        self.inc = ConvUnit(input_nc, 64)
+        self.DownLayer1 = DownLayer(64, 128)
+        self.DownLayer2 = DownLayer(128, 256)
+        self.DownLayer3 = DownLayer(256, 512)
+        self.DownLayer4 = DownLayer(512, 512)
+        self.UpLayer1 = UpLayer(1024, 256)
+        self.UpLayer2 = UpLayer(512, 128)
+        self.UpLayer3 = UpLayer(256, 64)
+        self.UpLayer4 = UpLayer(128, 64)
+        self.outc = OutConv(64, output_nc)
+        self.tanh = torch.nn.Tanh()
+    def forward(self, x):
+        x1 = self.inc(x)
+        x2 = self.DownLayer1(x1)
+        x3 = self.DownLayer2(x2)
+        x4 = self.DownLayer3(x3)
+        x5 = self.DownLayer4(x4)
+        x = self.UpLayer1(x5, x4)
+        x = self.UpLayer2(x, x3)
+        x = self.UpLayer3(x, x2)
+        x = self.UpLayer4(x, x1)
+        logits = self.outc(x)
+        out = self.tanh(logits)
+        return out
+
 if __name__ == "__main__":
     batch , ch, h, w = 1, 3, 255, 255
     x = torch.rand(batch, ch, h, w)

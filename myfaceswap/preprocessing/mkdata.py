@@ -18,13 +18,15 @@ class Video2FrameAndCleanBack(object):
             rootDir: str,
             domains: List[str],
             batchSize: int=1,
-            gpu: bool=False
+            gpu: bool=False,
+            limit: int=-1
     ):
         self.rootDir = rootDir
         os.makedirs(rootDir, exist_ok=True)
         self.domains = domains
         self.batchSize = batchSize
         self.gpu = gpu
+        self.limit = limit
         # Check files
         for file in self.domains:
             if not os.path.isdir(file):
@@ -50,8 +52,11 @@ class Video2FrameAndCleanBack(object):
             MAXFRAME = int(videoCap.get(cv2.CAP_PROP_FRAME_COUNT))
             bufferFrame = []
             self.saveCount = 0
+            COUNT = 0
+            MAXFRAME = MAXFRAME if self.limit < 0 else self.limit
             with tqdm(total=MAXFRAME, unit=' batch') as prev:
                 while (videoCap.isOpened()):
+                    if COUNT == self.limit: break
                     ret, frame = videoCap.read()
                     if not ret: break
                     bufferFrame.append(frame.copy())
@@ -59,6 +64,7 @@ class Video2FrameAndCleanBack(object):
                         self.Masking(bufferFrame, WIDTH, HEIGHT, domainName)
                         bufferFrame.clear()
                     prev.update(1)
+                    COUNT += 1
             if len(bufferFrame) > 0:
                 self.Masking(bufferFrame, WIDTH, HEIGHT, domainName)
                 bufferFrame.clear()

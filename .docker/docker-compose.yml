@@ -4,15 +4,15 @@ services:
     build:
       context: ../.docker
       dockerfile: Dockerfile
-    image: skrjtech/myfaceswap:pycharm
+    image: skrjtech/myfaceswap:pycharmVer1
     container_name: myfaceswap_container
     hostname: myfaceswap
     tty: true
     restart: always
     environment:
       - DISPLAY=$DISPLAY
-    devices:
-      - /dev/video2:/dev/video0
+    # devices:
+    #   - /dev/video2:/dev/video0
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ..:/ws

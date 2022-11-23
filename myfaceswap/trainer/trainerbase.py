@@ -59,6 +59,8 @@ class TrainerWrapper(Base):
             self.device = 'cuda:0'
 
     dataloder = None
+    batchCount = 0
+    epochCount = 0
     def Train(self):
         NUMBATCHSIZE = len(self.dataloder)
         with tqdm(range(self.epochStart, self.epochs), unit=' EPOCHs') as BAR1:
@@ -71,10 +73,13 @@ class TrainerWrapper(Base):
                         if losses:
                             BAR2.set_postfix(OrderedDict(losses))
                         self.ModelSaveBatch(index=i)
+                        self.batchCount += 1
                 self.ModelSaveEpoch(index=epoch)
+                self.epochCount += 1
 
     def ModelSaveBatch(self, path: str='everyBatch.pth', index: int=0):
         self.ModelSave(path)
+
     def ModelSaveEpoch(self, path: str='everyEpoch.pth', index: int=0):
         self.ModelSave(path)
 

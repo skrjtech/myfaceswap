@@ -1,113 +1,22 @@
-import torch
-from myfaceswap.models.modelbase import Flatten, ResidualBlock, ConvUnit, UpLayer, DownLayer, OutConv
-
-class Generator(torch.nn.Module):
-    def __init__(self, input_nc, output_nc, n_residual_blocks=9):
-        super(Generator, self).__init__()
-        self.modelStage1 = torch.nn.Sequential(
-            torch.nn.ReflectionPad2d(3),
-            torch.nn.Conv2d(input_nc, 64, 7),
-            torch.nn.InstanceNorm2d(64),
-            torch.nn.ReLU(inplace=True),
-
-            torch.nn.Conv2d(64, 128, 3, stride=2, padding=1),
-            torch.nn.InstanceNorm2d(128),
-            torch.nn.ReLU(inplace=True),
-
-            torch.nn.Conv2d(128, 256, 3, stride=2, padding=1),
-            torch.nn.InstanceNorm2d(256),
-            torch.nn.ReLU(inplace=True)
-        )
-        residualBlocks = []
-        for _ in range(n_residual_blocks):
-            residualBlocks.append(ResidualBlock(256))
-        self.modelStage2 = torch.nn.Sequential(*residualBlocks)
-        self.modelStage3 = torch.nn.Sequential(
-            torch.nn.ConvTranspose2d(256, 128, 3, stride=2, padding=1, output_padding=1),
-            torch.nn.InstanceNorm2d(128),
-            torch.nn.ReLU(inplace=True),
-            torch.nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1),
-            torch.nn.InstanceNorm2d(64),
-            torch.nn.ReLU(inplace=True),
-            torch.nn.ReflectionPad2d(3),
-            torch.nn.Conv2d(64, output_nc, 7),
-            torch.nn.Tanh()
-        )
-    def forward(self, x):
-        x = self.modelStage1(x)
-        x = self.modelStage2(x)
-        return self.modelStage3(x)
-
-class Discriminator(torch.nn.Module):
-    def __init__(self, input_nc):
-        super(Discriminator, self).__init__()
-        self.model = torch.nn.Sequential(
-            torch.nn.Conv2d(input_nc, 64, 4, stride=2, padding=1),
-            torch.nn.LeakyReLU(0.2, inplace=True),
-
-            torch.nn.Conv2d(64, 128, 4, stride=2, padding=1),
-            torch.nn.InstanceNorm2d(128),
-            torch.nn.LeakyReLU(0.2, inplace=True),
-
-            torch.nn.Conv2d(128, 256, 4, stride=2, padding=1),
-            torch.nn.InstanceNorm2d(256),
-            torch.nn.LeakyReLU(0.2, inplace=True),
-
-            torch.nn.Conv2d(256, 512, 4, padding=1),
-            torch.nn.InstanceNorm2d(512),
-            torch.nn.LeakyReLU(0.2, inplace=True),
-
-            torch.nn.Conv2d(512, 1, 4, padding=1)
-        )
-        self.flatten = Flatten()
-    def forward(self, x):
-        x = self.model(x)
-        x = torch.nn.functional.avg_pool2d(x, x.size()[2:])
-        return self.flatten(x)
-
-class Predictor(torch.nn.Module):
-    def __init__(self, input_nc, output_nc):
-        super(Predictor, self).__init__()
-        self.input_nc = input_nc
-        self.output_nc = output_nc
-        self.inc = ConvUnit(input_nc, 64)
-        self.DownLayer1 = DownLayer(64, 128)
-        self.DownLayer2 = DownLayer(128, 256)
-        self.DownLayer3 = DownLayer(256, 512)
-        self.DownLayer4 = DownLayer(512, 512)
-        self.UpLayer1 = UpLayer(1024, 256)
-        self.UpLayer2 = UpLayer(512, 128)
-        self.UpLayer3 = UpLayer(256, 64)
-        self.UpLayer4 = UpLayer(128, 64)
-        self.outc = OutConv(64, output_nc)
-        self.tanh = torch.nn.Tanh()
-    def forward(self, x):
-        x1 = self.inc(x)
-        x2 = self.DownLayer1(x1)
-        x3 = self.DownLayer2(x2)
-        x4 = self.DownLayer3(x3)
-        x5 = self.DownLayer4(x4)
-        x = self.UpLayer1(x5, x4)
-        x = self.UpLayer2(x, x3)
-        x = self.UpLayer3(x, x2)
-        x = self.UpLayer4(x, x1)
-        logits = self.outc(x)
-        out = self.tanh(logits)
-        return out
+from myfaceswap.models.modelbase import (
+    Generator, Discriminator, Predictor
+)
+import myfaceswap.utils
+from myfaceswap.utils import ReplayBuffer
+from myfaceswap.preprocessing.squence import FaceDatasetSquence, FaceDatasetVideo
 
 import os
 import itertools
+from collections import OrderedDict
+
 import cv2
 import numpy as np
-# from tqdm import tqdm
 from PIL import Image
+
+import torch
 import torchvision
 from torch.utils.data import DataLoader
-import myfaceswap.utils
-from myfaceswap.utils import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
-from myfaceswap.preprocessing.squence import FaceDatasetSquence, FaceDatasetVideo
-from collections import OrderedDict
 
 if myfaceswap.utils.is_env_notebook():
      from tqdm.notebook import tqdm
@@ -280,6 +189,7 @@ class RecycleTrainer:
         self.Variable = lambda x: torch.autograd.Variable(x, requires_grad=False).to(self.device)
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.logWriter.close()
+
     def trainOnBatch(self, batch):
         Real = self.Variable(self.Tensor(self.batchSize).fill_(1.))
         Fake = self.Variable(self.Tensor(self.batchSize).fill_(.0))
@@ -439,6 +349,7 @@ class RecycleTrainer:
                 prev.set_description(f"書き出し中...")
         videoA.release()
         # videoB.release()
+
     def modelLoad(self):
             load = torch.load(self.modelPath)
             models = load['models']
@@ -459,6 +370,7 @@ class RecycleTrainer:
             self.lr_schedulerPG.load_state_dict(scheduler["PG"])
             self.lr_schedulerDA.load_state_dict(scheduler["DA"])
             self.lr_schedulerDB.load_state_dict(scheduler["DB"])
+
     def modelSave(self, path):
         torch.save(
             {
@@ -483,6 +395,7 @@ class RecycleTrainer:
             },
             path
         )
+
     def ModelTest(self):
         for epoch in tqdm(range(self.epochStart, 2)):
             for i, batch in enumerate(tqdm(range(0, 2))):
@@ -499,12 +412,14 @@ class RecycleTrainer:
             self.modelSave(epoch)
             # Make Movie
             self.MakeVideo(epoch)
+
     def tensor2image(self, tensor):
         transpose = (1, 2, 0)
         img = 127.5 * (tensor.cpu().detach().numpy() + 1.)
         if img.shape[0] == 1:
             img = np.tile(img, (3, 1, 1))
         return img.astype(np.uint8).transpose(*transpose)
+
     def imageSave(self, tag: str, img, stepCount: int):
         path = os.path.join(self.imageWriterPath, tag, f"{stepCount:0=10}.png")
         dir, file = path.rsplit('/', 1)
@@ -512,6 +427,7 @@ class RecycleTrainer:
             os.makedirs(dir)
         img = Image.fromarray(img)
         img.save(path)
+
     def imageWriter(self, tag: str, images: tuple):
         transpose = (2, 0, 1)
         images = tuple(map(self.tensor2image, images))
@@ -519,6 +435,7 @@ class RecycleTrainer:
         # print(imgs.shape, type(imgs))
         self.imageSave(tag, imgs.copy(), self.stepCount)
         self.logWriter.add_image(tag, imgs.transpose(*transpose)/255., self.stepCount)
+
     def scalersWriter(self, tag: str, values: dict):
         for key, val in values.items():
             self.logWriter.add_scalar(os.path.join(tag, key), val, self.stepCount)
@@ -560,6 +477,7 @@ class RecycleModel(TrainerWrapper):
         self.ioRoot = rootDir
         self.source = source
         self.target = target
+        self.imageWriterPath = os.path.join(rootDir, 'output', 'images')
         self.inpC = inpC
         self.outC = outC
 
@@ -728,6 +646,7 @@ class RecycleModel(TrainerWrapper):
 
         LOSSES['SAMEA1'] = loss_identity_A.item()
         LOSSES['SAMEB1'] = loss_identity_B.item()
+        self.imageWriter('Same/A', )
 
         # 敵対的損失（GAN loss）
         fake_B1 = self.GA2B(A1)
@@ -863,6 +782,33 @@ class RecycleModel(TrainerWrapper):
         self.optimzerDB.step()
 
         return {"LOSS_PG": loss_PG.item(), "LOSS_DA": loss_D_A.item(), "LOSS_DB": loss_D_B.item()}
+
+    def tensor2image(self, tensor):
+        transpose = (1, 2, 0)
+        img = 127.5 * (tensor.cpu().detach().numpy() + 1.)
+        if img.shape[0] == 1:
+            img = np.tile(img, (3, 1, 1))
+        return img.astype(np.uint8).transpose(*transpose)
+
+    def imageSave(self, tag: str, img, stepCount: int):
+        path = os.path.join(self.imageWriterPath, tag, f"{stepCount:0=10}.png")
+        dir, file = path.rsplit('/', 1)
+        if not os.path.isdir(dir):
+            os.makedirs(dir)
+        img = Image.fromarray(img)
+        img.save(path)
+
+    def imageWriter(self, tag: str, images: tuple):
+        transpose = (2, 0, 1)
+        images = tuple(map(self.tensor2image, images))
+        imgs = np.concatenate(images, axis=1)
+        # print(imgs.shape, type(imgs))
+        self.imageSave(tag, imgs.copy(), self.batchCount)
+        self.logWriter.add_image(tag, imgs.transpose(*transpose)/255., self.batchCount)
+
+    def scalersWriter(self, tag: str, values: dict):
+        for key, val in values.items():
+            self.logWriter.add_scalar(os.path.join(tag, key), val, self.batchCount)
 
 if __name__ == '__main__':
     x = torch.rand(1, 3, 256, 256)
