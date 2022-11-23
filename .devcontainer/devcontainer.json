@@ -3,7 +3,6 @@
 	"dockerComposeFile": "../.docker/docker-compose.yml",
 	"service": "deepfake",
 	"workspaceFolder": "/ws",
-
 	"extensions": [
 		"ms-azuretools.vscode-docker",
 		"ms-python.python",
