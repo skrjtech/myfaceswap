@@ -15,4 +15,5 @@
         "python.linting.pylintEnabled": true,
         "python.linting.pylintPath": "/usr/local/bin/pylint"
     }
+	
 }
