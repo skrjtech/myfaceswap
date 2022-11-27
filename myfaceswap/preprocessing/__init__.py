@@ -1,1 +1,0 @@
-from myfaceswap.preprocessing.mkdata import Video2FrameAndCleanBack

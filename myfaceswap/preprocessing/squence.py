@@ -26,7 +26,7 @@ class FaceDatasetSquence(torchUtilsData.Dataset):
         """
         self.domainA = source
         self.domainB = target
-        self.transform = transforms.Compose(transform)
+        self.transform = transforms.Compose(transform) if transform is not None else transform
         self.unaligned = unaligned
         self.skip = skip
         self.remove_num = (skip + 1) * 2
@@ -35,7 +35,7 @@ class FaceDatasetSquence(torchUtilsData.Dataset):
         dirA = sorted(os.listdir(source))
         dirB = sorted(os.listdir(target))
         for dir in dirA:
-            framesB += sorted(glob.glob(os.path.join(source, dir, '*')))[:-self.remove_num]
+            framesA += sorted(glob.glob(os.path.join(source, dir, '*')))[:-self.remove_num]
         for dri in dirB:
             framesB += sorted(glob.glob(os.path.join(target, dri, '*')))[:-self.remove_num]
         domainALen, domainBLen = len(framesA), len(framesB)
@@ -47,14 +47,21 @@ class FaceDatasetSquence(torchUtilsData.Dataset):
     def GetSquentialData(self, file1, seed):
         file, exe = os.path.splitext(file1)
         dir, file = file.rsplit('/', 1)
-        file2 = os.path.join(dir, f'{int(file) + self.skip:0=5}.{exe}')
-        file3 = os.path.join(dir, f'{int(file) + self.skip * 2:0=5}.{exe}')
+        file2 = os.path.join(dir, f'{int(file) + self.skip:0=5}{exe}')
+        file3 = os.path.join(dir, f'{int(file) + self.skip * 2:0=5}{exe}')
         random.seed(seed)
-        file1 = self.transform(Image.open(file1).convert('RGB'))
+        if self.transform:
+            file1 = self.transform(Image.open(file1).convert('RGB'))
+            random.seed(seed)
+            file2 = self.transform(Image.open(file2).convert('RGB'))
+            random.seed(seed)
+            file3 = self.transform(Image.open(file3).convert('RGB'))
+            return file1, file2, file3
+        file1 = file1
         random.seed(seed)
-        file2 = self.transform(Image.open(file2).convert('RGB'))
+        file2 = file2
         random.seed(seed)
-        file3 = self.transform(Image.open(file3).convert('RGB'))
+        file3 = file3
         return file1, file2, file3
 
     def __getitem__(self, item):
@@ -95,8 +102,8 @@ class FaceDatasetVideo(torchUtilsData.Dataset):
     def GetSquentialData(self, file1, seed):
         file, exe = os.path.splitext(file1)
         dir, file = file.rsplit('/', 1)
-        file2 = os.path.join(dir, f'{int(file) + self.skip:0=5}.{exe}')
-        file3 = os.path.join(dir, f'{int(file) + self.skip * 2:0=5}.{exe}')
+        file2 = os.path.join(dir, f'{int(file) + self.skip:0=5}{exe}')
+        file3 = os.path.join(dir, f'{int(file) + self.skip * 2:0=5}{exe}')
         random.seed(seed)
         file1 = self.transform(Image.open(file1).convert('RGB'))
         random.seed(seed)
@@ -115,7 +122,7 @@ class FaceDatasetVideo(torchUtilsData.Dataset):
 
 if __name__ == '__main__':
 
-    dataset = FaceDatasetSquence("/ws/ioRoot/Datasetd/domainA/video", "/ws/ioRoot/dataset/domainB/video", skip=2)
-    print(dataset[0])
-    dataset = FaceDatasetVideo("/ws/ioRoot/Datasetd/domainA/video/head0", skip=2)
-    print(dataset[0])
+    dataset = FaceDatasetSquence("/ws/ioRoot/Datasets/output1/video", "/ws/ioRoot/Datasets/output2/video", skip=2)
+    print(dataset[0].values())
+    # dataset = FaceDatasetVideo("/ws/ioRoot/Datasetd/domainA/video/head0", skip=2)
+    # print(dataset[0])

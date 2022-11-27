@@ -1,1 +1,0 @@
-from myfaceswap.models.recyclemodel import RecycleTrainer

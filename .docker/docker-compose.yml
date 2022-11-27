@@ -11,8 +11,8 @@ services:
     restart: always
     environment:
       - DISPLAY=$DISPLAY
-    # devices:
-    #   - /dev/video2:/dev/video0
+    devices:
+      - /dev/video0:/dev/video0
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ..:/ws

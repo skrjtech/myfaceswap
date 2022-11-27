@@ -1,22 +1,21 @@
+# std lib
 import sys
 from collections import OrderedDict
-from typing import Optional, List, Union, Tuple, Dict
-
-import torch.cuda
-
+# mylib
+from myfaceswap.types import (
+    OPLTD,
+    OPTrans
+)
+# call lib
 if 'google_colab' in sys.modules:
-    print('google_colab')
     from tqdm.notebook import tqdm
 else:
     from tqdm import tqdm
+import torch.cuda
 
-import torchvision
-
-OPLTD = Optional[Union[List, Tuple, Dict]]
-OPTrans = Optional[List[torchvision.transforms.Compose]]
 class Base(object):
 
-    def Transforms(self, trans: Optional=None):
+    def Transforms(self, trans: OPTrans=None):
         raise Exception(f'You Have To Implements Transforms Method.')
     def ModelSave(self, path: str=None):
         raise Exception('You Have To Implements ModelSave Method.')
@@ -44,7 +43,8 @@ class TrainerWrapper(Base):
             betas: tuple=(0.5, 0.999),
             cpuWorkers: int=8,
             gpu: bool=False,
-            loadModel: bool=False
+            loadModel: bool=False,
+            loadModelPath: str=None
     ):
         self.epochs = epochs
         self.epochStart = epochStart
@@ -55,18 +55,20 @@ class TrainerWrapper(Base):
         self.cpuWorkers = cpuWorkers
         self.gpu = gpu
         self.loadModel = loadModel
-        if gpu & torch.cuda.is_available()():
+        self.loadModelPath = loadModelPath
+        self.device = 'cpu'
+        if gpu & torch.cuda.is_available():
             self.device = 'cuda:0'
 
-    dataloder = None
+    dataloader = None
     batchCount = 0
     epochCount = 0
     def Train(self):
-        NUMBATCHSIZE = len(self.dataloder)
+        NUMBATCHSIZE = len(self.dataloader)
         with tqdm(range(self.epochStart, self.epochs), unit=' EPOCHs') as BAR1:
             for epoch in BAR1:
                 BAR1.set_description(f'EPOCHS: {epoch+1:0=5}/{self.epochs:0=5}')
-                with tqdm(self.dataloder, unit=' BATCHs', leave=False) as BAR2:
+                with tqdm(self.dataloader, unit=' BATCHs', leave=False) as BAR2:
                     for i, batch in enumerate(BAR2):
                         BAR2.set_description(f'BATCHS: {i+1:0=5}/{NUMBATCHSIZE:0=5}')
                         losses = self.TrainOnBatch(batch)

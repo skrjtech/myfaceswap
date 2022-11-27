@@ -78,9 +78,10 @@ class OutConv(torch.nn.Module):
 Recycle 
 """
 class Generator(torch.nn.Module):
-    def __init__(self, input_nc, output_nc, n_residual_blocks=9):
+    def __init__(self, input_nc, output_nc):
         super(Generator, self).__init__()
-        self.modelStage1 = torch.nn.Sequential(
+
+        self.model = torch.nn.Sequential(
             torch.nn.ReflectionPad2d(3),
             torch.nn.Conv2d(input_nc, 64, 7),
             torch.nn.InstanceNorm2d(64),
@@ -92,28 +93,33 @@ class Generator(torch.nn.Module):
 
             torch.nn.Conv2d(128, 256, 3, stride=2, padding=1),
             torch.nn.InstanceNorm2d(256),
-            torch.nn.ReLU(inplace=True)
-        )
-        residualBlocks = []
-        for _ in range(n_residual_blocks):
-            residualBlocks.append(ResidualBlock(256))
-        self.modelStage2 = torch.nn.Sequential(*residualBlocks)
-        self.modelStage3 = torch.nn.Sequential(
+            torch.nn.ReLU(inplace=True),
+
+            ResidualBlock(256),
+            ResidualBlock(256),
+            ResidualBlock(256),
+            ResidualBlock(256),
+            ResidualBlock(256),
+            ResidualBlock(256),
+            ResidualBlock(256),
+            ResidualBlock(256),
+            ResidualBlock(256),
+
             torch.nn.ConvTranspose2d(256, 128, 3, stride=2, padding=1, output_padding=1),
             torch.nn.InstanceNorm2d(128),
             torch.nn.ReLU(inplace=True),
+
             torch.nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1),
             torch.nn.InstanceNorm2d(64),
             torch.nn.ReLU(inplace=True),
+
             torch.nn.ReflectionPad2d(3),
             torch.nn.Conv2d(64, output_nc, 7),
             torch.nn.Tanh()
         )
-    def forward(self, x):
-        x = self.modelStage1(x)
-        x = self.modelStage2(x)
-        return self.modelStage3(x)
 
+    def forward(self, x):
+        return self.model(x)
 class Discriminator(torch.nn.Module):
     def __init__(self, input_nc):
         super(Discriminator, self).__init__()
