@@ -73,8 +73,10 @@ class RecycleModel(TrainerWrapper):
         self.source = source
         self.target = target
         self.imageWriterPath = os.path.join(rootDir, 'output', 'images')
+        self.videoWriterPath = os.path.join(rootDir, 'output', 'video')
         self.inpC = inpC
         self.outC = outC
+        self.imageSize = imageSize
 
         self.identityLoss = identityLoss
         self.ganLoss = ganLoss
@@ -132,6 +134,7 @@ class RecycleModel(TrainerWrapper):
         self.schedulerDB = torch.optim.lr_scheduler.LambdaLR(self.optimzerDB, lr_lambda=LambdaLR(self.epochs, self.epochStart, self.epochDecay))
 
         self.modelSavePath = os.path.join(rootDir, 'model', 'recycle')
+        os.makedirs(self.modelSavePath, exist_ok=True)
         if self.loadModel:
             self.ModelLoad()
 
@@ -155,7 +158,6 @@ class RecycleModel(TrainerWrapper):
         DatasetTrain = FaceDatasetSquence(source, target, transforms, skip=skipFrame)
         # TrainDataLoader
         self.dataloader = DataLoader(DatasetTrain, self.batchSize, shuffle=False, num_workers=self.cpuWorkers)
-
         # Transforms
         transforms = [
             torchvision.transforms.Resize(int(imageSize * 1.), torchvision.transforms.InterpolationMode.BICUBIC),
@@ -193,6 +195,9 @@ class RecycleModel(TrainerWrapper):
         self.schedulerPG.load_state_dict(scheduler['PG'])
         self.schedulerDA.load_state_dict(scheduler['DA'])
         self.schedulerDB.load_state_dict(scheduler['DB'])
+        checkpoint = checkpoint['checkpoint']
+        self.batchCount = checkpoint['Batch']
+        self.epochStart = self.epochCount = checkpoint['Epoch']
 
     def ModelSave(self, path: str=None):
         path = os.path.join(self.modelSavePath, path)
@@ -212,6 +217,10 @@ class RecycleModel(TrainerWrapper):
                     'PG': self.schedulerPG.state_dict(),
                     'DA': self.schedulerDA.state_dict(),
                     'DB': self.schedulerDB.state_dict()
+                },
+                'checkpoint': {
+                    'Batch': self.batchCount,
+                    'Epoch': self.epochCount
                 }
             },
             path
@@ -222,11 +231,13 @@ class RecycleModel(TrainerWrapper):
     1. image log writer
     """
     def TrainOnBatch(self, batch: OPLTD=None, index: int=0):
+        self.makeVideo()
+
         LOSSES = {}
 
-        A1, A2, A3, B1, B2, B3 = map(lambda x: torch.autograd.Variable(x).to(self.device), batch.values())
-        Real = torch.autograd.Variable(torch.Tensor(self.batchSize).fill_(1.), requires_grad=True).to(self.device)
-        Fake = torch.autograd.Variable(torch.Tensor(self.batchSize).fill_(0.), requires_grad=True).to(self.device)
+        A1, A2, A3, B1, B2, B3 = map(lambda x: torch.Tensor(x).to(self.device), batch.values())
+        Real = torch.autograd.Variable(torch.Tensor(self.batchSize).fill_(1.), requires_grad=False).to(self.device)
+        Fake = torch.autograd.Variable(torch.Tensor(self.batchSize).fill_(0.), requires_grad=False).to(self.device)
 
         ##### 生成器A2B、B2Aの処理 #####
         self.optimzerPG.zero_grad()
@@ -240,37 +251,45 @@ class RecycleModel(TrainerWrapper):
 
         LOSSES['SAMEA1'] = loss_identity_A.item()
         LOSSES['SAMEB1'] = loss_identity_B.item()
+        self.imageWriter("SAME/REAL_B2SAME_B", (B1, same_B1))
+        self.imageWriter("SAME/REAL_A2SAME_A", (A1, same_A1))
 
         # 敵対的損失（GAN loss）
         fake_B1 = self.GA2B(A1)
         pred_fake_B1 = self.DisB(fake_B1)
         loss_GAN_A2B1 = self.criterionGan(pred_fake_B1, Real) * self.ganLoss
         LOSSES["GAN_A2B1"] = loss_GAN_A2B1.item()
+        self.imageWriter("GAN/REAL_A1_2_FAKE_B1", (A1, fake_B1))
 
         fake_B2 = self.GA2B(A2)
         pred_fake_B2 = self.DisB(fake_B2)
         loss_GAN_A2B2 = self.criterionGan(pred_fake_B2, Real) * self.ganLoss
         LOSSES['GAN_A2B2'] = loss_GAN_A2B2.item()
+        self.imageWriter("GAN/REAL_A2_2_FAKE_B2", (A2, fake_B2))
 
         fake_B3 = self.GA2B(A3)
         pred_fake_B3 = self.DisB(fake_B3)
         loss_GAN_A2B3 = self.criterionGan(pred_fake_B3, Real) * self.ganLoss
         LOSSES['GAN_A2B3'] = loss_GAN_A2B3.item()
+        self.imageWriter("GAN/REAL_A3_2_FAKE_B3", (A3, fake_B3))
 
         fake_A1 = self.GB2A(B1)
         pred_fake_A1 = self.DisA(fake_A1)
         loss_GAN_B2A1 = self.criterionGan(pred_fake_A1, Real) * self.ganLoss
         LOSSES['GAN_B2A1'] = loss_GAN_B2A1.item()
+        self.imageWriter("GAN/REAL_B1_2_FAKE_A1", (B1, fake_A1))
 
         fake_A2 = self.GB2A(B2)
         pred_fake_A2 = self.DisA(fake_A2)
         loss_GAN_B2A2 = self.criterionGan(pred_fake_A2, Real) * self.ganLoss
         LOSSES['GAN_B2A2'] = loss_GAN_B2A2.item()
+        self.imageWriter("GAN/REAL_B2_2_FAKE_A2", (B2, fake_A2))
 
         fake_A3 = self.GB2A(B3)
         pred_fake_A3 = self.DisA(fake_A3)
         loss_GAN_B2A3 = self.criterionGan(pred_fake_A3, Real) * self.ganLoss
         LOSSES['GAN_B2A3'] = loss_GAN_B2A3.item()
+        self.imageWriter("GAN/REAL_B3_2_FAKE_A3", (B3, fake_A3))
 
         # サイクル一貫性損失（Cycle-consistency loss）
         fake_B12 = torch.cat((fake_B1, fake_B2), dim=1)
@@ -278,23 +297,27 @@ class RecycleModel(TrainerWrapper):
         recovered_A3 = self.GB2A(fake_B3_pred)
         loss_recycle_ABA = self.criterionRecycle(recovered_A3, A3) * self.recycleLoss
         LOSSES["RECYCLE_ABA"] = loss_recycle_ABA.item()
+        self.imageWriter("RECYCLE/B2A", (fake_B1, fake_B2, fake_B3_pred, recovered_A3))
 
         fake_A12 = torch.cat((fake_A1, fake_A2), dim=1)
         fake_A3_pred = self.PredA(fake_A12)
         recovered_B3 = self.GA2B(fake_A3_pred)
         loss_recycle_BAB = self.criterionRecycle(recovered_B3, B3) * self.recycleLoss
         LOSSES["RECYCLE_BAB"] = loss_recycle_BAB.item()
+        self.imageWriter("RECYCLE/A2B", (fake_A1, fake_A2, fake_A3_pred, recovered_B3))
 
         # Recurrent loss
         A12 = torch.cat((A1, A2), dim=1)
         pred_A3 = self.PredA(A12)
         loss_recurrent_A = self.criterionRecurrent(pred_A3, A3) * self.currentLoss
         LOSSES['RECURRENT_A'] = loss_recurrent_A.item()
+        self.imageWriter("RECURRENT/A2A", (A1, A2, pred_A3))
 
         B12 = torch.cat((B1, B2), dim=1)
         pred_B3 = self.PredB(B12)
         loss_recurrent_B = self.criterionRecurrent(pred_B3, B3) * self.currentLoss
         LOSSES['RECURRENT_B'] = loss_recurrent_B.item()
+        self.imageWriter("RECURRENT/B2B", (B1, B2, pred_B3))
 
         # 生成器の合計損失関数（Total loss）
         loss_PG = loss_identity_A + loss_identity_B + loss_GAN_A2B1 + loss_GAN_A2B2 + loss_GAN_A2B3 + loss_GAN_B2A1 + loss_GAN_B2A2 + loss_GAN_B2A3 \
@@ -368,9 +391,12 @@ class RecycleModel(TrainerWrapper):
         loss_D_B.backward()
         self.optimzerDB.step()
 
+        self.scalersWriter("LOSSES", LOSSES)
         return {"LOSS_PG": loss_PG.item(), "LOSS_DA": loss_D_A.item(), "LOSS_DB": loss_D_B.item()}
 
     def tensor2image(self, tensor):
+        if len(tensor.shape) > 3:
+            tensor = tensor[0]
         transpose = (1, 2, 0)
         img = 127.5 * (tensor.cpu().detach().numpy() + 1.)
         if img.shape[0] == 1:
@@ -378,14 +404,14 @@ class RecycleModel(TrainerWrapper):
         return img.astype(np.uint8).transpose(*transpose)
 
     def imageSave(self, tag: str, img, stepCount: int):
-        path = os.path.join(self.imageWriterPath, tag, f"{stepCount:0=10}.png")
-        dir, file = path.rsplit('/', 1)
-        if not os.path.isdir(dir):
-            os.makedirs(dir)
+        path = os.path.join(self.imageWriterPath, tag)
+        os.makedirs(path, exist_ok=True)
+        path = os.path.join(path, f"{stepCount:0=10}.png")
         img = Image.fromarray(img)
         img.save(path)
 
     def imageWriter(self, tag: str, images: tuple):
+        if self.batchCount % 10 != 0: return
         transpose = (2, 0, 1)
         images = tuple(map(self.tensor2image, images))
         imgs = np.concatenate(images, axis=1)
@@ -393,8 +419,31 @@ class RecycleModel(TrainerWrapper):
         self.logWriter.add_image(tag, imgs.transpose(*transpose)/255., self.batchCount)
 
     def scalersWriter(self, tag: str, values: dict):
+        if self.batchCount % 10 != 0: return
         for key, val in values.items():
             self.logWriter.add_scalar(os.path.join(tag, key), val, self.batchCount)
+
+    def makeVideo(self):
+        if self.batchCount % 20 != 0: return
+        path = os.path.join(self.videoWriterPath, 'source')
+        os.makedirs(path, exist_ok=True)
+        path = os.path.join(path, f"{self.batchCount:0=10}.mp4")
+        codec = cv2.VideoWriter_fourcc(*'mp4v')
+        video = cv2.VideoWriter(path, codec, 29.0, (self.imageSize * 2, self.imageSize))
+        for i, batch in enumerate(self.VideoDataloader):
+            A1, A2, A3 = map(lambda x: torch.autograd.Variable(x).to(self.device), batch.values())
+            FAKEB1 = self.GA2B(A1)
+            FAKEB2 = self.GA2B(A2)
+            FAKEB3 = self.GA2B(A3)
+            FAKEB12 = torch.cat((FAKEB1, FAKEB2), dim=1)
+            FAKEB3PRED = self.PredB(FAKEB12)
+            OUTIMAGE = (FAKEB3 + FAKEB3PRED) / 2.
+            OUTIMAGE = torch.cat([A3, OUTIMAGE], dim=3)
+            FRAME = 127.5 * (OUTIMAGE[0].cpu().float().detach().numpy() + 1.)
+            FRAME = FRAME.transpose(1, 2, 0).astype(np.uint8)
+            FRAME = cv2.cvtColor(FRAME, cv2.COLOR_RGB2BGR)
+            video.write(FRAME)
+        video.release()
 
 if __name__ == '__main__':
     # x = torch.rand(1, 3, 256, 256)
@@ -405,7 +454,5 @@ if __name__ == '__main__':
     # predict = Predictor(3 * 2, 3)
     # print(predict(torch.cat((x, x), dim=1)).shape)
 
-    recycle = RecycleModel(rootDir='/ws/ioRoot', source='/ws/ioRoot/Datasets/output1/video', target='/ws/ioRoot/Datasets/output2/video')
-    batch = next(iter(recycle.dataloader))
-    loss = recycle.TrainOnBatch(batch, index=0)
-    print(loss)
+    recycle = RecycleModel(rootDir='/ws/ioRoot', source='/ws/ioRoot/Datasets/output1/video', target='/ws/ioRoot/Datasets/output2/video', gpu=True, cpuWorkers=4, learningRate=0.0002)
+    recycle.Train()
