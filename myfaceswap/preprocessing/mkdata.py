@@ -27,7 +27,7 @@ class Base:
 
         :param rootDir:     'ioRoot/
         :param domains:     '[domain1, domain2, ..., domainN]'
-        :param bathSize:    '1'
+        :param bathSize:    '-1'
         :param limit:       'frame 1, 2, ..., N
         """
         self.rootDir = rootDir
@@ -35,9 +35,7 @@ class Base:
         self.batchSize = bathSize
         self.limit = limit
         self.gpu = gpu
-        self.device = 'cpu'
-        if gpu:
-            self.device = 'cuda:0'
+        self.device = torch.device('cuda' if torch.cuda.is_available() & self.gpu else 'cpu')
 
         os.makedirs(rootDir, exist_ok=True)
         for file in self.domains:
@@ -70,11 +68,9 @@ class Video2Frame(Base):
 class CleanBack(Base):
     def __init__(self, **kwargs):
         super(CleanBack, self).__init__(**kwargs)
-        self.device = torch.device('cuda' if torch.cuda.is_available() & self.gpu else 'cpu')
         model = torchvision.models.segmentation.deeplabv3_resnet101(pretrained=True)
-        model.eval()
-        if self.gpu:
-            model.cuda()
+        model = model.to(self.device)
+
         self.transforms = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
