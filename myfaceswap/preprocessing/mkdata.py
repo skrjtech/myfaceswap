@@ -19,7 +19,7 @@ class Base:
             self,
             rootDir: str,
             domains: List[str],
-            bathSize: int=1,
+            batchSize: int=1,
             limit: int=-1,
             gpu: bool=False
     ):
@@ -27,12 +27,12 @@ class Base:
 
         :param rootDir:     'ioRoot/
         :param domains:     '[domain1, domain2, ..., domainN]'
-        :param bathSize:    '-1'
-        :param limit:       'frame 1, 2, ..., N
+        :param batchSize:    '1'
+        :param limit:       '-1: frame 1, 2, ..., N'
         """
         self.rootDir = rootDir
         self.domains = domains
-        self.batchSize = bathSize
+        self.batchSize = batchSize
         self.limit = limit
         self.gpu = gpu
         self.device = torch.device('cuda' if torch.cuda.is_available() & self.gpu else 'cpu')
@@ -75,7 +75,12 @@ class CleanBack(Base):
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
-        self.InpTensor = lambda x: self.transforms(x).unsqueeze(0).to(self.device) # Output Shape: batch, C, W, H
+        def Transform(x):
+            x = self.transforms(x)
+            if len(x.shape) == 3:
+                x = x.unsqueeze(0)
+            return x.to(self.device)
+        self.InpTensor = lambda x: Transform(x) # Output Shape: batch, C, W, H
         self.model = lambda x: model(x)['out'].argmax(1).byte().cpu().numpy() # Output Shape: batch, W, H
 
     def video2frame(self):
