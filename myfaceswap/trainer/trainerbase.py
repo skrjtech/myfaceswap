@@ -1,4 +1,6 @@
 # std lib
+import warnings
+warnings.simplefilter('ignore')
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
@@ -58,9 +60,7 @@ class TrainerWrapper(Base):
         self.gpu = gpu
         self.loadModel = loadModel
         self.loadModelPath = loadModelPath
-        self.device = 'cpu'
-        if gpu & torch.cuda.is_available():
-            self.device = 'cuda:0'
+        self.device = 'cuda:0' if gpu & torch.cuda.is_available() else 'cpu'
 
     dataloader = None
     batchCount = 0

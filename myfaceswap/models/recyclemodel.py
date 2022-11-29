@@ -1,9 +1,10 @@
+import warnings
+warnings.simplefilter('ignore')
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 import itertools
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 from myfaceswap.models.modelbase import (
     Generator, Discriminator, Predictor
 )
@@ -22,11 +23,6 @@ import torch
 import torchvision
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-
-if 'google_colab' in sys.modules:
-    from tqdm.notebook import tqdm
-else:
-    from tqdm import tqdm
 
 # omomi shokika
 def weights_init_normal(m):
@@ -110,7 +106,6 @@ class RecycleModel(TrainerWrapper):
         self.optimzerPG = torch.optim.Adam(
             itertools.chain(
                 self.GA2B.parameters(), self.GB2A.parameters(),
-                self.DisA.parameters(), self.DisB.parameters(),
                 self.PredA.parameters(), self.PredB.parameters()),
             lr=self.learningRate, betas=self.betas
         )
@@ -249,7 +244,6 @@ class RecycleModel(TrainerWrapper):
         # G_B2A(A)はAと一致
         same_A1 = self.GB2A(A1)
         loss_identity_A = self.criterionIdentity(same_A1, A1) * self.identityLoss
-
         LOSSES['SAMEA1'] = loss_identity_A.item()
         LOSSES['SAMEB1'] = loss_identity_B.item()
         self.imageWriter("SAME/REAL_B2SAME_B", (B1, same_B1))
@@ -396,6 +390,7 @@ class RecycleModel(TrainerWrapper):
         return {"LOSS_PG": loss_PG.item(), "LOSS_DA": loss_D_A.item(), "LOSS_DB": loss_D_B.item()}
 
     def tensor2image(self, tensor):
+        tensor = tensor.clone()
         if len(tensor.shape) > 3:
             tensor = tensor[0]
         transpose = (1, 2, 0)

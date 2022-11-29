@@ -1,3 +1,6 @@
+import warnings
+warnings.simplefilter('ignore')
+
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
@@ -69,6 +72,7 @@ class CleanBack(Base):
     def __init__(self, **kwargs):
         super(CleanBack, self).__init__(**kwargs)
         model = torchvision.models.segmentation.deeplabv3_resnet101(pretrained=True)
+        model.eval()
         model = model.to(self.device)
 
         self.transforms = torchvision.transforms.Compose([
@@ -80,6 +84,7 @@ class CleanBack(Base):
             if len(x.shape) == 3:
                 x = x.unsqueeze(0)
             return x.to(self.device)
+
         self.InpTensor = lambda x: Transform(x) # Output Shape: batch, C, W, H
         self.model = lambda x: model(x)['out'].argmax(1).byte().cpu().numpy() # Output Shape: batch, W, H
 
