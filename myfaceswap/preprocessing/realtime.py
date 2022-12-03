@@ -7,18 +7,20 @@ import numpy as np
 import torch
 import torchvision
 from myfaceswap.types import (
-    Union
+    Union,
+    TMODULE
 )
 
 class Base(object):
     """
     kakuchou kanou na obj
     """
-    def __init__(self, camera: Union[int, str], imageSize: tuple=(640, 480), gpu: bool=False):
+    def __init__(self, camera: Union[int, str], imageSize: tuple=(640, 480), gpu: bool=False, model: TMODULE=None):
         self.CapVideo = cv2.VideoCapture(camera)
         self.imageSize = imageSize
         self.gpu = gpu
         self.device = 'cpu'
+        self.model = model
         # Camera Info
         self.MAXHEIGHT = int(self.CapVideo.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.MAXWIDTH = int(self.CapVideo.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -44,12 +46,13 @@ class Base(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.CapVideo.release()
 
-class OpenCamera(Base):
+class BaseWrapper(Base):
+    def __init__(self, *args, **kwargs):
+        super(BaseWrapper, self).__init__(*args, **kwargs)
+
+class OpenCamera(BaseWrapper):
     def __init__(self, **kwargs):
         super(OpenCamera, self).__init__(**kwargs)
-
-    def view(self, **kwargs):
-        self.normalView(**kwargs)
 
     def transform(self, frame, flip: int=None):
         if flip is not None:

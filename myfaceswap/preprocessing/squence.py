@@ -77,7 +77,7 @@ class FaceDatasetSquence(torchUtilsData.Dataset):
         return OrderedDict({'A1': A1, 'A2': A2, 'A3': A3, 'B1': B1, 'B2': B2, 'B3': B3})
 
     def __len__(self):
-        return max(self.domainALen, self.domainALen)
+        return max(self.domainALen, self.domainBLen)
 
 class FaceDatasetVideo(torchUtilsData.Dataset):
     def __init__(

@@ -10,10 +10,11 @@ from myfaceswap.models.modelbase import (
 )
 import myfaceswap.utils
 from myfaceswap.types import (
-    OPLTD, OPTrans
+    OPLTD
 )
 from myfaceswap.trainer.trainerbase import TrainerWrapper
 from myfaceswap.preprocessing.squence import FaceDatasetSquence, FaceDatasetVideo
+from myfaceswap.preprocessing.realtime import BaseWrapper
 
 import cv2
 import numpy as np
@@ -23,6 +24,21 @@ import torch
 import torchvision
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+
+class RecycleFrameChanger(BaseWrapper):
+    def __init__(self, transforms: list, *args, **kwargs):
+        super(RecycleFrameChanger, self).__init__(*args, **kwargs)
+        self.transforms = torchvision.transforms.Compose(transforms)
+
+    def transform(self, frame):
+        frame = cv2.resize(frame, self.imageSize)
+        trans = self.transforms(frame)
+        with torch.no_grad():
+            trans = trans.unsqueeze(0)
+            output = self.model(trans).squeeze(0).cpu().float().numpy()
+            output = 127.5 * (np.transpose(output, (2, 0, 1)) + 1.)
+        return output
+
 
 # omomi shokika
 def weights_init_normal(m):
@@ -39,16 +55,16 @@ class RecycleModel(TrainerWrapper):
             rootDir: str,
             source: str,
             target: str,
-            inpC: int=3,
-            outC: int=3,
-            imageSize: int=256,
-            maxFrame: int=50,
-            skipFrame: int=2,
-            identityLoss: float=5.,
-            ganLoss: float=5.,
-            recycleLoss: float=10.,
-            currentLoss: float=10.,
-            **kwargs
+            inpC: int = 3,
+            outC: int = 3,
+            imageSize: int = 256,
+            maxFrame: int = 50,
+            skipFrame: int = 2,
+            identityLoss: float = 5.,
+            ganLoss: float = 5.,
+            recycleLoss: float = 10.,
+            currentLoss: float = 10.,
+            **kwargs: object
     ) -> None:
         """
         :param rootDir:         'ioRoot/'
