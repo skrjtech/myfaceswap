@@ -11,12 +11,12 @@ services:
     restart: always
     environment:
       - DISPLAY=$DISPLAY
-    # devices:
-    #   - /dev/video0:/dev/video0
+    devices:
+      - /dev/video0:/dev/video0
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ..:/ws
-      - ../..:/Output
+      - ../Database:/Output
     deploy:
       resources:
         reservations:
@@ -24,5 +24,3 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    ports:
-      - 8888:8888
