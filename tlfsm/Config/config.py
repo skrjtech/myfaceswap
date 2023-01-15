@@ -1,0 +1,8 @@
+from os.path import join
+
+# FILES PATH
+DATABASE_PATH = '/DATABASE'
+DATASET_PATH = join(DATABASE_PATH, 'DATASETS')
+TRAIN_DATA_PATH = join(DATASET_PATH, 'TrainDatas')
+EVAL_DATA_PATH = join(DATASET_PATH, 'TestDatas')
+VIDEO_FILES_PATH = join(DATABASE_PATH, 'VideoDatas')
