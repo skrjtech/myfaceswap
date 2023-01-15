@@ -1,11 +1,11 @@
 version: '3.9'
 services:
   astvs:
-    build:
-      context: ../.docker
-      dockerfile: Dockerfile
-      args:
-        - IMAGETAG=skrjtech/python:debian-python3.9.16
+    # build:
+    #   context: ../.docker
+    #   dockerfile: Dockerfile
+    #   args:
+    #     - IMAGETAG=skrjtech/python:debian-python3.9.16
     image: skrjtech/astvs:debian-python3.9.16
     container_name: astvs_container
     hostname: astvs
@@ -21,7 +21,7 @@ services:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ..:/ws
       - ../DATABASE:/DATABASE
-      - pycharm_volume:/opt/pycharm
+      - pycharm_volume:/tmp/pycharm
     deploy:
       resources:
         reservations:
@@ -38,7 +38,7 @@ services:
     volumes:
       - type: volume
         source: pycharm_volume
-        target: /opt/pycharm
+        target: /tmp/pycharm
     depends_on:
       - astvs
 
