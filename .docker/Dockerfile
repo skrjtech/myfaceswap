@@ -1,5 +1,5 @@
-ARG FROMIMAGE
-FROM skrjtech/python:${FROMIMAGE}
+ARG IMAGETAG
+FROM ${IMAGETAG}
 
 RUN apt-get update \
     && apt-get install -y locales locales-all \
@@ -17,7 +17,7 @@ RUN python -m pip install opencv-python opencv-contrib-python
 
 # Audio
 RUN apt install -y portaudio19-dev pulseaudio
-RUN python -m pip install pyaudio ffmpeg-python
+RUN python -m pip install pyaudio ffmpeg-python sounddevice
 # ニューラルネットワーク構築用フレームワーク cpu or gpu (cuda version 11.7 )
 RUN python -m pip install torch torchvision torchaudio
 # MTCNN
