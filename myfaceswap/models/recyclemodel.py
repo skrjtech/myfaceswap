@@ -15,7 +15,6 @@ from myfaceswap.types import (
 from myfaceswap.trainer.trainerbase import TrainerWrapper
 from myfaceswap.preprocessing.squence import FaceDatasetSquence, FaceDatasetVideo
 from myfaceswap.preprocessing.realtime import BaseWrapper
-
 import cv2
 import numpy as np
 from PIL import Image
@@ -26,9 +25,13 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 class RecycleFrameChanger(BaseWrapper):
-    def __init__(self, transforms: list, *args, **kwargs):
+    def __init__(self, transforms: list, modelPath: str=None, *args, **kwargs):
         super(RecycleFrameChanger, self).__init__(*args, **kwargs)
         self.transforms = torchvision.transforms.Compose(transforms)
+        self.model = Generator(3, 3)
+        self.model.eval()
+        if modelPath is not None:
+            self.model.load_state_dict(torch.load(modelPath))
 
     def transform(self, frame):
         frame = cv2.resize(frame, self.imageSize)
@@ -36,7 +39,8 @@ class RecycleFrameChanger(BaseWrapper):
         with torch.no_grad():
             trans = trans.unsqueeze(0)
             output = self.model(trans).squeeze(0).cpu().float().numpy()
-            output = 127.5 * (np.transpose(output, (2, 0, 1)) + 1.)
+            output = 127.5 * (np.transpose(output, (1, 2, 0)) + 1.)
+        output = cv2.resize(output, (self.MAXWIDTH, self.MAXHEIGHT))
         return output
 
 
@@ -69,7 +73,7 @@ class RecycleModel(TrainerWrapper):
         """
         :param rootDir:         'ioRoot/'
         :param source:          'Datasets/domainA/'
-        :param target:          'Datasets/domainA/'
+        :param target:          'Datasets/domainB/'
         :param inpC:            3
         :param outC:            3
         :param imageSize:       256
@@ -466,5 +470,11 @@ if __name__ == '__main__':
     # predict = Predictor(3 * 2, 3)
     # print(predict(torch.cat((x, x), dim=1)).shape)
 
-    recycle = RecycleModel(rootDir='/ws/ioRoot', source='/ws/ioRoot/Datasets/output1/video', target='/ws/ioRoot/Datasets/output2/video', gpu=True, cpuWorkers=4, learningRate=0.0002)
-    recycle.Train()
+    # recycle = RecycleModel(rootDir='/ws/ioRoot', source='/ws/ioRoot/Datasets/output1/video', target='/ws/ioRoot/Datasets/output2/video', gpu=True, cpuWorkers=4, learningRate=0.0002)
+    # recycle.Train()
+
+    # transforms = [
+    #     torchvision.transforms.ToTensor(),
+    #     torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+    # RecycleFrameChanger(transforms, imageSize=(256, 256), camera=0).normalView()
+    pass

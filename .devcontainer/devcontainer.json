@@ -1,7 +1,7 @@
 {
 	"name": "face and voice swap project",
 	"dockerComposeFile": "../.docker/docker-compose.yml",
-	"service": "deepfake",
+	"service": "tl-fsm",
 	"workspaceFolder": "/ws",
 	"extensions": [
 		"ms-azuretools.vscode-docker",

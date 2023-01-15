@@ -1,22 +1,27 @@
 version: '3.9'
 services:
-  deepfake:
+  tl-fsm:
     build:
       context: ../.docker
       dockerfile: Dockerfile
-    image: skrjtech/myfaceswap:pycharm
-    container_name: myfaceswap_container
-    hostname: myfaceswap
+      args:
+        - FROMIMAGE=amd64-debian-python3.9.16
+    image: skrjtech/tlfsm:amd64-debian-python3.9.16
+    container_name: tl-fsm_container
+    hostname: tlfsm
     tty: true
     restart: always
+    privileged: true
     environment:
       - DISPLAY=$DISPLAY
-    devices:
-      - /dev/video0:/dev/video0
+    # devices:
+    #   - /dev/video0:/dev/video0
+    #   - /dev/snd:/dev/snd
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ..:/ws
-      - ../Database:/Output
+      - /media/main/TOSHIBA-HDD3/1.Archive/DATABASE/tl-fsm/:/DATABASE
+      - pycharm_tl-fsm_volume:/opt/pycharm
     deploy:
       resources:
         reservations:
@@ -24,3 +29,18 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+
+  pycharm:
+    image: skrjtech/pycharm:amd64-debian
+    container_name: tl-fsm_pycharm_container
+    tty: true
+    restart: always
+    volumes:
+      - type: volume
+        source: pycharm_tl-fsm_volume
+        target: /opt/pycharm
+    depends_on:
+      - tl-fsm
+
+volumes:
+  pycharm_tl-fsm_volume:
