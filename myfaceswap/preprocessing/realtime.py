@@ -21,13 +21,13 @@ class Base(object):
         self.gpu = gpu
         self.device = 'cpu'
         self.model = model
-        # Camera Info
+        # CameraAndAudio Info
         self.MAXHEIGHT = int(self.CapVideo.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.MAXWIDTH = int(self.CapVideo.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.FPS = int(self.CapVideo.get(cv2.CAP_PROP_FPS))
 
     def normalView(self, AutoControll: bool=True, windowName: str='OriginalFrame', exitCommand: str='q', **kwargs):
-        # Camera Controll All Off
+        # CameraAndAudio Controll All Off
         if not AutoControll:
             self.CapVideo.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)
             self.CapVideo.set(cv2.CAP_PROP_AUTOFOCUS, 0)
@@ -61,7 +61,7 @@ class OpenCamera(BaseWrapper):
 
 class RealTimePreprocess(Base):
     def replace(self, CaptureName: str="OutputFrame", exitCommand: str='q', AutoControll: bool=True, **kwargs):
-        # Camera Controll All Off
+        # CameraAndAudio Controll All Off
         if not AutoControll:
             self.CapVideo.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)
             self.CapVideo.set(cv2.CAP_PROP_AUTOFOCUS, 0)
@@ -106,7 +106,7 @@ class RealTimeProcess(RealTimePreprocess):
                 self.model.cuda()
 
     def recode(self, path: str='output.mp4', AutoControll: bool=True, windowName: str='OriginalFrame', exitCommand: str='q', **kwargs):
-        # Camera Controll All Off
+        # CameraAndAudio Controll All Off
         if not AutoControll:
             self.CapVideo.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0)
             self.CapVideo.set(cv2.CAP_PROP_AUTOFOCUS, 0)

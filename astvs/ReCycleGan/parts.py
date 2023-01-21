@@ -1,17 +1,21 @@
+#!/bin/python3
+# -*- coding: utf-8 -*-
+
 import os
 import warnings
 warnings.simplefilter('ignore')
 import glob
+import time
 from utils.types import *
 
 class ReplayBuffer():
-    def __init__(self, max_size=50, device: str='cpu'):
+    def __init__(self, max_size=50, device: torch.device='cpu'):
         self.max_size = max_size
         self.device = device
         self.data = []
 
     def push_and_pop(self, data):
-        data = data.cpu()
+        data = data.detach().cpu()
         to_return = []
         for element in data.data:
             #

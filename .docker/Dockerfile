@@ -1,5 +1,5 @@
 ARG IMAGETAG
-FROM ${IMAGETAG}
+FROM $IMAGETAG
 
 RUN apt-get update \
     && apt-get install -y locales locales-all \
@@ -28,4 +28,5 @@ RUN python -m pip install git+https://github.com/openai/whisper.git
 RUN python -m pip install tqdm
 # opencv camera 用
 RUN echo 'export QT_X11_NO_MITSHM=1' >> ~/.bashrc
+
 CMD [ "/bin/bash" ]

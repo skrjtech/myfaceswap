@@ -1,9 +1,6 @@
 #!/bin/python3
 # -*- coding: utf-8 -*-
-from Argparse import argumentParser
-
-def main():
-    argumentParser()
+from main import main
 
 if __name__ == '__main__':
     main()

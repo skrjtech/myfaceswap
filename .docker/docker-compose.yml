@@ -6,22 +6,26 @@ services:
     #   dockerfile: Dockerfile
     #   args:
     #     - IMAGETAG=skrjtech/python:debian-python3.9.16
-    image: skrjtech/astvs:debian-python3.9.16
-    container_name: astvs_container
+    image: skrjtech/astvs:latest
+    container_name: astvs
     hostname: astvs
     tty: true
     restart: always
     privileged: true
     environment:
       - DISPLAY=$DISPLAY
-    # devices:
-    #   - /dev/video0:/dev/video0
-    #   - /dev/snd:/dev/snd
+    devices:
+      - /dev/video0:/dev/video0
+      - /dev/video1:/dev/video1
+      - /dev/snd:/dev/snd
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ..:/ws
       - ../DATABASE:/DATABASE
       - pycharm_volume:/tmp/pycharm
+      # For Remort
+      - $HOME/.Xauthority:/root/.Xauthority
+      
     deploy:
       resources:
         reservations:
@@ -32,7 +36,7 @@ services:
 
   pycharm:
     image: skrjtech/pycharm:debian
-    container_name: pycharm_container
+    container_name: pycharm
     tty: true
     restart: always
     volumes:

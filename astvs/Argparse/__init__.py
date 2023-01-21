@@ -1,4 +1,6 @@
-from ._argspaser import MkDataArgs
-from ._argspaser import TrainArgs
-from ._argspaser import EvalArgs
-from ._argspaser import RealtimeArgs
+#!/bin/python3
+# -*- coding: utf-8 -*-
+from .argspaser import argumentParser
+from .modelargs import (
+    MakedataArgs, TrainArgs, EvalArgs, PluginArgs
+)
