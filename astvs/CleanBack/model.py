@@ -12,76 +12,6 @@ import numpy as np
 from tqdm import tqdm
 from utils.types import CaptureT
 
-def GetChannels(capIdx: CaptureT) -> int:
-    cap = cv2.VideoCapture(capIdx)
-    if cap.isOpened():
-        ret, frame = cap.read()
-        if ret:
-            w, h, c = frame.shape
-            return c
-    return -1
-
-class CaptureBase(object):
-    def __init__(self, capIdx: CaptureT) -> None:
-        CHANNELS = GetChannels(capIdx)
-        if CHANNELS < 0:
-            raise AssertionError(f"videoCapture {capIdx} のファイルを正しく開くことができませんでした")
-        self.Capture = cv2.VideoCapture(capIdx)
-        self.MAXWIDTH = int(self.Capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-        self.MAXHEIGHT = int(self.Capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        self.MAXFRAMES = int(self.Capture.get(cv2.CAP_PROP_FRAME_COUNT))
-        self.MAXCHANNELS = CHANNELS
-        self.Zeros = np.zeros((self.MAXWIDTH, self.MAXHEIGHT, self.MAXCHANNELS), dtype=np.uint8)
-    
-    def Read(self):
-        if self.Capture.isOpened():
-            ret, frame = self.Capture.read()
-            if not ret:
-                frame = self.Zeros.copy()
-            return frame
-        return self.Zeros.copy()
-
-class VideoFileProcessing(CaptureBase):
-    def __init__(self, capIdx: CaptureT, args) -> None:
-        super().__init__(capIdx)
-        CHANNELS = GetChannels(capIdx)
-        if CHANNELS < 0:
-            assert f"{capIdx}のファイルを正しく開くことができませんでした"
-        self.Capture = cv2.VideoCapture(capIdx)
-        self.MAXWIDTH = int(self.Capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-        self.MAXHEIGHT = int(self.Capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        self.MAXFRAMES = int(self.Capture.get(cv2.CAP_PROP_FRAME_COUNT))
-        self.MAXCHANNELS = CHANNELS
-
-        self.Getbuffer = self._GetBuffer2
-        try:
-            if args.MULTIFRAMES:
-                # 2GBずつ取り込む
-                self.MAXLIMIT = 2 / ((self.MAXWIDTH * self.MAXHEIGHT * (self.MAXCHANNELS * 8)) / 8 * 10e-9)
-                self.RANGE = int(self.MAXFRAMES // self.MAXLIMIT) 
-                self.SPLITFRAMES = [int(self.MAXLIMIT) for _ in range(self.RANGE)] + [(self.MAXFRAMES - (self.MAXLIMIT - int(self.MAXLIMIT)))]
-                self.Getbuffer = self._GetBuffer1
-        except:
-            pass
-    
-    def Getbuffer(self):
-        pass
-
-    # for multiframe
-    def _GetBuffer1(self):
-        for split in self.SPLITFRAMES:
-            frames = []
-            for f in range(split):
-                frames.append(
-                    self.Read()
-                )
-            yield frames
-    
-    # one frame
-    def _GetBuffer2(self):
-        for f in range(self.MAXFRAMES):
-            yield self.Read()
-
 class Resize(torchvision.transforms.Lambda):
     def __init__(self, WIDTH: int, HEIGHT: int):
         super(Resize, self).__init__(lambd=lambda x: cv2.resize(x, (WIDTH, HEIGHT)))
@@ -121,8 +51,7 @@ class Base(object):
     
     def _Predict2(self, input):
         input = torch.cat(list(map(lambda x: self.Transform(x).unsqueeze(0), input)))
-        return self.model(input.to(self.DEVICE))['out'].argmax(1).byte().cpu().numpy() # B, C, W, H -> B, W, H
-    
+        return self.model(input.to(self.DEVICE))['out'].argmax(1).unsqueeze(1).byte().cpu().numpy() # B, C, W, H -> B, C, W, H
 
 class CleanBackModel(Base):
     def __init__(self, args, WIDTH: int=320, HEIGHT=320) -> None:
@@ -134,6 +63,9 @@ class CleanBackModel(Base):
                 self.Plugin = self._Masking2
         except:
             pass
+    
+    def __call__(self, input):
+        return self.Plugin(input)
 
     def Plugin(self, input):
         pass
@@ -153,49 +85,106 @@ class CleanBackModel(Base):
         output = self.Predict(input)
         mask = (np.where(output > 0., 1., 0.) * 255.).astype(np.uint8)
         mask = np.tile(mask, (1, 3, 1, 1)).transpose((0, 2, 3, 1))
-        mask = map(lambda x: cv2.resize(x, (Width, Height)), mask)
-        output = map(lambda x: cv2.bitwise_and(input, x), mask)
+        mask = map(lambda x: cv2.resize(x, (Height, Width)), mask)
+        output = map(lambda x: cv2.bitwise_and(x[0], x[1]), zip(input, mask))
         return list(output)
 
+from CameraAndAudio import CameraPlugin
+class VideoFileProcessing(CameraPlugin):
+    def __init__(self, capIdx, args) -> None:
+        super().__init__(capIdx)
+        self.Getbuffer = self._GetBuffer2
+        try:
+            if args.MULTIFRAMES and args.BATCHSIZE > 1:
+                # 2GBずつ取り込む
+                self.MAXLIMIT = 2 / ((self.MAXWIDTH * self.MAXHEIGHT * (self.MAXCHANNELS * 8)) / 8 * 10e-9)
+                self.RANGE = int(self.MAXFRAMES // self.MAXLIMIT) 
+                self.SPLITFRAMES = [int(self.MAXLIMIT) for _ in range(self.RANGE)] + [self.MAXFRAMES - (int(self.MAXLIMIT) * self.RANGE)]
+                self.Getbuffer = self._GetBuffer1
+        except:
+            pass
+    
+    def Getbuffer(self):
+        pass
+
+    # for multiframe
+    def _GetBuffer1(self):
+        for split in self.SPLITFRAMES:
+            frames = []
+            for _ in range(split):
+                frames.append(
+                    self.Read()
+                )
+            yield frames
+    
+    # one frame
+    def _GetBuffer2(self):
+        for f in range(self.MAXFRAMES):
+            yield self.Read()
+
+from Argparse.modelargs import MakedataArgs
 class VideoFileCleanBack(object):
-    def __init__(self, args) -> None:
+    def __init__(self, args: MakedataArgs) -> None:
+        if args.DOMAINA == args.DOMAINB:
+            raise AssertionError("ドメインA・ドメインBのどちらかを選んでください")
+        
         self.DomainType = None
         if args.DOMAINA:
             self.DomainType = 'DomainA'
         if args.DOMAINB:
             self.DomainType = 'DomainB'
-        self.videoFiles = sorted(glob.glob(os.path.join(args.INPUT, '*')))
+        self.videoFiles = sorted(glob.glob(os.path.join(args.INPUT, self.DomainType, '*')))
         self.CBM = CleanBackModel(args)
-        
+
+        self.Processing = self._Processing1
+        try:
+            if args.MULTIFRAMES and (args.BATCHSIZE > 1):
+                self.Processing = self._Processing2
+        except:
+            pass
         self.Processing(args)
 
     def Processing(self, args):
-        for file in self.videoFiles:
-            filename = file.split('/')[-1]
+        pass
+    
+    def _Processing1(self, args):
+        for file in tqdm(self.videoFiles):
+            filename = file.split('/')[-1].split('.')[0]
             path = os.path.join(args.OUTPUT, self.DomainType, filename)
             if not os.path.isdir(path):
                 os.makedirs(path, exist_ok=True)
             VFP = VideoFileProcessing(file, args)
-            batch = []
+            count = 0
+            for frame in VFP.Getbuffer():
+                out = self.CBM(frame)
+                print(os.path.join(path, f'{count:0=10d}.png'))
+                cv2.imwrite(os.path.join(path, f'{count:0=10d}.png'), out)
+                count += 1
+    
+    def _Processing2(self, args):
+        batch = []
+        count = 0
+        for file in tqdm(self.videoFiles):
+            filename = file.split('/')[-1].split('.')[0]
+            path = os.path.join(args.OUTPUT, self.DomainType, filename)
+            if not os.path.isdir(path):
+                os.makedirs(path, exist_ok=True)
+            VFP = VideoFileProcessing(file, args)
             count = 0
             for buffer in VFP.Getbuffer():
                 for frame in buffer:
                     if len(batch) == args.BATCHSIZE:
-                        output = self.CBM.Plugin(batch)
+                        output = self.CBM(batch)
                         for out in output:
-                            cv2.imwrite(os.path.join(path, f'{count:0=10d}.png'))
+                            cv2.imwrite(os.path.join(path, f'{count:0=10d}.png'), out)
                             count += 1
                         batch.clear()
-
-class RealtimeBackClean(object):
-    def __init__(self, args) -> None:
-        self.Capture = CaptureBase(args.VIDEO)
-        self.CBM = CleanBackModel(args)
-    
-    def Plugin(self):
-        return self.CBM.Plugin(self.Capture.Read())
-    
-
-
+                    batch.append(frame)
+        if len(batch) > 0:
+                output = self.CBM(batch)
+                for out in output:
+                    cv2.imwrite(os.path.join(path, f'{count:0=10d}.png'), out)
+                    count += 1
+            
 if __name__ == '__main__':
     pass

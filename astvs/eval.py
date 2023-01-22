@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
-
 import cv2
-
 from Argparse import EvalArgs, TrainArgs
 from ReCycleGan import RecycleEval
 from CameraAndAudio import CameraPlugin

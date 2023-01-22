@@ -315,10 +315,14 @@ class RecycleTrain(RecycleBase):
             print("Model Save!!")
 
 
-class RecycleEval(RecycleBase):
-    def __int__(self, args):
-        super(RecycleEval, self).__init__(args)
+from Argparse.modelargs import EvalArgs
+class RecycleEval(EvalArgs):
+    def __init__(self, args) -> None:
+        super().__init__(args)
         self.Build()
+    
+    def __call__(self, input):
+        return self.Plugin(input)
 
     def Build(self):
         self.GeneretorA2B = Generator(3, 3)
@@ -332,7 +336,6 @@ class RecycleEval(RecycleBase):
 
         self.GeneretorA2B.load_state_dict(torch.load(os.path.join(self.RESULT, 'weights', 'GeneretorA2B.pth')))
         self.transform = torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-
 
     def Plugin(self, frame: NPArray):
         frame = frame.transpose((2, 0, 1))

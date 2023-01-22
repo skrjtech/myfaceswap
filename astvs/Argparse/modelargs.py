@@ -51,3 +51,4 @@ class PluginArgs(object):
         self.RESULT = args.result
         self.VIDEO = args.video
         self.CUDA = args.cuda
+        self.MIC = args.mic

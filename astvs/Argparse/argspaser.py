@@ -6,14 +6,6 @@ import argparse
 from argparse import (
     RawTextHelpFormatter, 
     ArgumentDefaultsHelpFormatter)
-from .modelargs import (
-    MakedataArgs,
-    TrainArgs,
-    EvalArgs,
-    PluginArgs)
-from pprint import pprint
-from CleanBack import RealtimeBackClean
-
 class ArgsHelpFormat(ArgumentDefaultsHelpFormatter, RawTextHelpFormatter):
     pass
 
@@ -26,9 +18,8 @@ def argumentParser():
         epilog=textwrap.dedent("""
         """)
     )
-
     subparsers = parse.add_subparsers()
-
+    # 訓練・評価用データセット作成オプション
     makedata = subparsers.add_parser(
         name='makedata',
         formatter_class=ArgsHelpFormat,
@@ -62,9 +53,12 @@ def argumentParser():
         '-i', '--input', type=str, default='Datas/Videos', help='動画ファイル先'
     )
     makedata.add_argument(
-        '-o', '--output', type=str, default='Datas/TrainData', help='処理済みデータ出力先'
+        '-o', '--output', type=str, default='Datas/train', help='処理済みデータ出力先'
     )
-    makedata.set_defaults(handler=lambda x: pprint(vars(x)))
+    # def MakedataRun(args):
+    #     pprint(args)
+    #     VFCB = VideoFileCleanBack(args)
+    # makedata.set_defaults(handler=MakedataRun)
 
 
     training = subparsers.add_parser(
@@ -150,7 +144,9 @@ def argumentParser():
     training.add_argument(
         '--recurrent-loss-rate', type=float, default=10.0, help='RecurrentLoss 調整値'
     )
-    training.set_defaults(handler=lambda x: pprint(vars(x)))
+    # def TrainRun(args):
+    #     pprint(args)
+    # training.set_defaults(handler=TrainRun)
 
     eval = subparsers.add_parser(
         name='eval',
@@ -187,8 +183,9 @@ def argumentParser():
     eval.add_argument(
         '--cuda', action='store_true', help='GPU上で処理'
     )
-    
-    eval.set_defaults(handler=lambda x: pprint(vars(x)))
+    # def EvalRun(args):
+    #     pprint(args)
+    # eval.set_defaults(handler=EvalArgs)
 
 
     plugin = subparsers.add_parser(
@@ -226,27 +223,24 @@ def argumentParser():
     plugin.add_argument(
         '--cuda', action='store_true', help='GPU上で処理'
     )
-    def Switch(args):
-        if args.domain_b:
-            args.domain_a = not args.domain_a
-        pprint(vars(args))
-        
-        import cv2
-        args = PluginArgs(args)
-        Run = RealtimeBackClean(args)
-        while True:
-            output = Run.Plugin()
-            cv2.imshow('frame', output)
-            if cv2.waitKey(1) == ord('q'):
-                break
+    plugin.add_argument(
+        '--mic', type=str, default=0, help='マイク認識番号'
+    )
+    # def PluginRun(args):
+    #     if args.domain_b:
+    #         args.domain_a = not args.domain_a
+    #     pprint(vars(args))
+    #     import cv2
+    #     args = PluginArgs(args)
+    #     Run = RealtimeBackClean(args)
+    #     while True:
+    #         output = Run.Plugin()
+    #         cv2.imshow('frame', output)
+    #         if cv2.waitKey(1) == ord('q'):
+    #             break
+    # plugin.set_defaults(handler=PluginRun)
 
-    plugin.set_defaults(handler=lambda x: Switch(x))
-
-    args = parse.parse_args()
-    if hasattr(args, 'handler'):
-        args.handler(args)
-    else:
-        parse.print_help()
+    return parse, makedata, training, eval, plugin
 
 if __name__ == '__main__':
     argumentParser()
