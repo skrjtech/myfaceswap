@@ -4,60 +4,15 @@
 import textwrap
 import argparse
 from argparse import (
-    RawTextHelpFormatter, ArgumentDefaultsHelpFormatter
-)
+    RawTextHelpFormatter, 
+    ArgumentDefaultsHelpFormatter)
+from .modelargs import (
+    MakedataArgs,
+    TrainArgs,
+    EvalArgs,
+    PluginArgs)
 from pprint import pprint
-
-def MkDataArgs():
-
-    parser = argparse.ArgumentParser(description='tl-fsm creating data Script')
-    parser.add_argument('--input', type=str, default='', help='input video')
-    parser.add_argument('--output', type=str, default='', help='output video')
-    parser.add_argument('--domainA', dest='domainA', action='store_true')
-    parser.add_argument('--domainB', dest='domainB', action='store_true')
-    parser.add_argument('--batch-size', type=int, default=1, help='Batch Size')
-    parser.add_argument('--cuda', dest='cuda', action='store_true')
-
-    return parser.parse_args()
-
-def TrainArgs():
-
-    parser = argparse.ArgumentParser(description='tl-fsm training Script')
-    parser.add_argument('--input', type=str, default='result/TrainDatas')
-    parser.add_argument('--result', type=str, default='result')
-    parser.add_argument('--weights-load', dest='weights_load', action='store_true')
-    parser.add_argument('--channels', type=int, default=3)
-    parser.add_argument('--max-frames', type=int, default=50)
-    parser.add_argument('--identity-rate', type=float, default=5.)
-    parser.add_argument('--gan-rate', type=float, default=5.)
-    parser.add_argument('--recycle-rate', type=float, default=10.)
-    parser.add_argument('--current-rate', type=float, default=10.)
-    parser.add_argument('--cuda', dest='cuda', action='store_true')
-    parser.add_argument('--batch-size', type=int, default=1)
-    parser.add_argument('--start-iter', type=int, default=1)
-    parser.add_argument('--num-workers', type=int, default=1)
-    parser.add_argument('--lr', '--learning-rate', type=float, default=0.0002)
-    parser.add_argument('--decay', type=int, default=200)
-    parser.add_argument('--save-interval', type=int, default=10)
-    parser.add_argument('--beta1', type=int, default=0.5)
-    parser.add_argument('--beta2', type=int, default=0.999)
-    parser.add_argument('--epochs', type=int, default=10)
-    parser.add_argument('--skip', type=int, default=2)
-
-    return parser.parse_args()
-
-def EvalArgs():
-
-    parser = argparse.ArgumentParser(description='tl-fsm training Script')
-    parser.add_argument('--input', type=str, default='0')
-    parser.add_argument('--result', type=str, default='/result')
-    parser.add_argument('--channels', type=int, default=3)
-    parser.add_argument('--cuda', dest='cuda', action='store_true')
-
-    return parser.parse_args()
-
-def RealtimeArgs():
-    return
+from CleanBack import RealtimeBackClean
 
 class ArgsHelpFormat(ArgumentDefaultsHelpFormatter, RawTextHelpFormatter):
     pass
@@ -266,7 +221,7 @@ def argumentParser():
         '-r', '--result', type=str, default='Datas/result', help='重み保存先'
     )
     plugin.add_argument(
-        '-v', '--video', type=str, default='0', help='カメラ認識番号'
+        '-v', '--video', type=int, default=0, help='カメラ認識番号'
     )
     plugin.add_argument(
         '--cuda', action='store_true', help='GPU上で処理'
@@ -275,6 +230,16 @@ def argumentParser():
         if args.domain_b:
             args.domain_a = not args.domain_a
         pprint(vars(args))
+        
+        import cv2
+        args = PluginArgs(args)
+        Run = RealtimeBackClean(args)
+        while True:
+            output = Run.Plugin()
+            cv2.imshow('frame', output)
+            if cv2.waitKey(1) == ord('q'):
+                break
+
     plugin.set_defaults(handler=lambda x: Switch(x))
 
     args = parse.parse_args()

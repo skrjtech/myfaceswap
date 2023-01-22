@@ -11,7 +11,6 @@ import torchvision
 import numpy as np
 from tqdm import tqdm
 from utils.types import CaptureT
-from Argparse import MakedataArgs, EvalArgs, PluginArgs
 
 def GetChannels(capIdx: CaptureT) -> int:
     cap = cv2.VideoCapture(capIdx)
@@ -26,7 +25,7 @@ class CaptureBase(object):
     def __init__(self, capIdx: CaptureT) -> None:
         CHANNELS = GetChannels(capIdx)
         if CHANNELS < 0:
-            assert f"{capIdx}のファイルを正しく開くことができませんでした"
+            raise AssertionError(f"videoCapture {capIdx} のファイルを正しく開くことができませんでした")
         self.Capture = cv2.VideoCapture(capIdx)
         self.MAXWIDTH = int(self.Capture.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.MAXHEIGHT = int(self.Capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -90,6 +89,7 @@ class Resize(torchvision.transforms.Lambda):
 class Base(object):
     def __init__(self, args, WIDTH: int=320, HEIGHT=320) -> None:
         self.model = torchvision.models.segmentation.deeplabv3_resnet101(pretrained=True)
+        self.model.eval()
         self.transform = torchvision.transforms.Compose([
             Resize(WIDTH, HEIGHT),
             torchvision.transforms.ToTensor(),
@@ -102,8 +102,11 @@ class Base(object):
                 self.model.cuda()
 
         self.Predict = self._Predict1
-        if args.BATCHSIZE > 1:
-            self.Predict = self._Predict2
+        try:
+            if args.BATCHSIZE > 1:
+                self.Predict = self._Predict2
+        except:
+            pass
     
     def Transform(self, input):
         return self.transform(input)
@@ -140,7 +143,7 @@ class CleanBackModel(Base):
         output = self.Predict(input)
         mask = (np.where(output > 0., 1., 0.) * 255.).astype(np.uint8)
         mask = np.tile(mask, (3, 1, 1)).transpose((1, 2, 0))
-        mask = cv2.resize(mask, (Width, Height))
+        mask = cv2.resize(mask, (Height, Width))
         output = cv2.bitwise_and(input, mask)
         return output
 
@@ -155,7 +158,7 @@ class CleanBackModel(Base):
         return list(output)
 
 class VideoFileCleanBack(object):
-    def __init__(self, args: MakedataArgs) -> None:
+    def __init__(self, args) -> None:
         self.DomainType = None
         if args.DOMAINA:
             self.DomainType = 'DomainA'
@@ -185,12 +188,14 @@ class VideoFileCleanBack(object):
                         batch.clear()
 
 class RealtimeBackClean(object):
-    def __init__(self, args: PluginArgs) -> None:
+    def __init__(self, args) -> None:
         self.Capture = CaptureBase(args.VIDEO)
         self.CBM = CleanBackModel(args)
     
     def Plugin(self):
         return self.CBM.Plugin(self.Capture.Read())
+    
+
 
 if __name__ == '__main__':
     pass
