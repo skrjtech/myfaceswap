@@ -19,26 +19,26 @@ def argumentParser():
         """)
     )
     subparsers = parse.add_subparsers()
+    
+    # 作業スペースの確保　(Init)
+    init_ws = subparsers.add_parser(
+        name='init',
+        formatter_class=ArgsHelpFormat,
+        help=textwrap.dedent(f"""
+        ( {'init':<9s}) ワークスペースの作成
+        """)
+    )
+
     # 訓練・評価用データセット作成オプション
     makedata = subparsers.add_parser(
         name='makedata',
         formatter_class=ArgsHelpFormat,
         help=textwrap.dedent(f"""
         ( {'makedata':<9s}) 学習用動画ファイルの構築
-            -a, --domain-a              ドメインAをBに変更 (default: False)
-            -b, --domain-b              ドメインBをAに変更 (default: False)
             -m, --multiframes           フレーム数を分割にまとめ処理 (default: False)
             --batch-size BATCH_SIZE     バッチサイズで処理 (default: 4)
             --cuda                      GPU上で処理 (default: False)
-            -i INPUT, --input INPUT     動画ファイル先 (default: Datas/Videos)
-            -o OUTPUT, --output OUTPUT  処理済みデータ出力先 (default: Datas/TrainData)
         """)
-    )
-    makedata.add_argument(
-        '-a', '--domain-a', action='store_true', help='ドメインAをBに変更'
-    )
-    makedata.add_argument(
-        '-b', '--domain-b', action='store_true', help='ドメインBをAに変更'
     )
     makedata.add_argument(
         '-m', '--multiframes', action='store_true', help='フレーム数を分割にまとめ処理'
@@ -49,30 +49,17 @@ def argumentParser():
     makedata.add_argument(
         '--cuda', action='store_true', help='GPU上で処理'
     )
-    makedata.add_argument(
-        '-i', '--input', type=str, default='Datas/Videos', help='動画ファイル先'
-    )
-    makedata.add_argument(
-        '-o', '--output', type=str, default='Datas/train', help='処理済みデータ出力先'
-    )
-    # def MakedataRun(args):
-    #     pprint(args)
-    #     VFCB = VideoFileCleanBack(args)
-    # makedata.set_defaults(handler=MakedataRun)
-
 
     training = subparsers.add_parser(
         name='train',
         formatter_class=ArgsHelpFormat,
         help=textwrap.dedent(f"""
         ( {'train':<9s}) 学習用メソッド
-            -i INPUT, --input INPUT                     ファイル先 (default: Datas/train/video)
-            -r RESULT, --result RESULT                  学習経過重み保存先 (default: Datas/result)
             --channels CHANNELS                         画像チャンネル数 (default: 3)
-            --weight                                    重み呼び出し (default: False)
+            --weights                                   重み呼び出し (default: False)
             --skip-frames SKIP_FRAMES                   学習用データ間スキップ数 (default: 2)
             --max-frames MAX_FRAMES                     学習時比較用保存フレーム数 (default: 50)
-            -epochs EPOCHS                              データ全体の学習回数 (default: 50)
+            --epochs EPOCHS                              データ全体の学習回数 (default: 50)
             --epoch-start EPOCH_START                   学習回数開始位置 (default: 1)
             --epoch-decay EPOCH_DECAY                   学習回数減衰数 (default: 200)
             --batch-size BATCH_SIZE                     バッチサイズで処理 (default: 4)
@@ -88,16 +75,10 @@ def argumentParser():
         """)
     )
     training.add_argument(
-        '-i', '--input', type=str, default='Datas/train/video', help='ファイル先'
-    )
-    training.add_argument(
-        '-r', '--result', type=str, default='Datas/result', help='学習経過重み保存先'
-    )
-    training.add_argument(
         '--channels', type=int, default=3, help='画像チャンネル数'
     )
     training.add_argument(
-        '--weight', action='store_true', help='重み呼び出し'
+        '--weights', action='store_true', help='重み呼び出し'
     )
     training.add_argument(
         '--skip-frames', type=int, default=2, help='学習用データ間スキップ数'
@@ -106,7 +87,7 @@ def argumentParser():
         '--max-frames', type=int, default=50, help='学習時比較用保存フレーム数'
     )
     training.add_argument(
-        '-epochs', type=int, default=50, help='データ全体の学習回数'
+        '--epochs', type=int, default=50, help='データ全体の学習回数'
     )
     training.add_argument(
         '--epoch-start', type=int, default=1, help='学習回数開始位置'
@@ -144,49 +125,30 @@ def argumentParser():
     training.add_argument(
         '--recurrent-loss-rate', type=float, default=10.0, help='RecurrentLoss 調整値'
     )
-    # def TrainRun(args):
-    #     pprint(args)
-    # training.set_defaults(handler=TrainRun)
 
     eval = subparsers.add_parser(
         name='eval',
         formatter_class=ArgsHelpFormat,
         help=textwrap.dedent(f"""
         ( {'eval':<9s}) 評価用メソッド
-            -a, --domain-a              ドメインAをBに変更 (default: False)
-            -b, --domain-b              ドメインBをAに変更 (default: False)
             -i IMAGE, --image IMAGE     評価用画像ファイル先 (default: )
-            -r RESULT, --result RESULT  重み保存先 (default: Datas/result)
-            -o OUTPUT, --output OUTPUT  評価済みデータ保存先 (default: Datas/result/eval)
+            -o OUTPUT, --output OUTPUT  評価済みデータ保存先 (default: )
             -v VIDEO, --video VIDEO     評価用動画ファイル先 (default: )
             --cuda                      GPU上で処理 (default: False)
         """)
     )
     eval.add_argument(
-        '-a', '--domain-a', action='store_true', help='ドメインAをBに変更'
-    )
-    eval.add_argument(
-        '-b', '--domain-b', action='store_true', help='ドメインBをAに変更'
-    )
-    eval.add_argument(
         '-i', '--image', type=str, default='', help='評価用画像ファイル先'
-    )
-    eval.add_argument(
-        '-r', '--result', type=str, default='Datas/result', help='重み保存先'
-    )
-    eval.add_argument(
-        '-o', '--output', type=str, default='Datas/result/eval', help='評価済みデータ保存先'
     )
     eval.add_argument(
         '-v', '--video', type=str, default='', help='評価用動画ファイル先'
     )
     eval.add_argument(
+        '-o', '--output', type=str, default='', help='評価済みデータ保存先'
+    )
+    eval.add_argument(
         '--cuda', action='store_true', help='GPU上で処理'
     )
-    # def EvalRun(args):
-    #     pprint(args)
-    # eval.set_defaults(handler=EvalArgs)
-
 
     plugin = subparsers.add_parser(
         name='plugin',
@@ -197,7 +159,6 @@ def argumentParser():
             -b, --domain-b              ドメインBをAに変更 (default: False)
             -d DEVICE, --device DEVICE  仮想カメラ用ファイル名 (default: -1)
             -n NAME, --name NAME        キャプチャ名 (default: ASTVS)
-            -r RESULT, --result RESULT  重み保存先 (default: Datas/result)
             -v VIDEO, --video VIDEO     カメラ認識番号 (default: 0)
             --cuda                      GPU上で処理 (default: False)
         """)
@@ -215,9 +176,6 @@ def argumentParser():
         '-n', '--name', type=str, default='ASTVS', help='キャプチャ名'
     )
     plugin.add_argument(
-        '-r', '--result', type=str, default='Datas/result', help='重み保存先'
-    )
-    plugin.add_argument(
         '-v', '--video', type=int, default=0, help='カメラ認識番号'
     )
     plugin.add_argument(
@@ -226,21 +184,8 @@ def argumentParser():
     plugin.add_argument(
         '--mic', type=str, default=0, help='マイク認識番号'
     )
-    # def PluginRun(args):
-    #     if args.domain_b:
-    #         args.domain_a = not args.domain_a
-    #     pprint(vars(args))
-    #     import cv2
-    #     args = PluginArgs(args)
-    #     Run = RealtimeBackClean(args)
-    #     while True:
-    #         output = Run.Plugin()
-    #         cv2.imshow('frame', output)
-    #         if cv2.waitKey(1) == ord('q'):
-    #             break
-    # plugin.set_defaults(handler=PluginRun)
 
-    return parse, makedata, training, eval, plugin
+    return parse, init_ws, makedata, training, eval, plugin
 
 if __name__ == '__main__':
     argumentParser()

@@ -1,11 +1,9 @@
 version: '3.9'
 services:
   astvs:
-    # build:
-    #   context: ../.docker
-    #   dockerfile: Dockerfile
-    #   args:
-    #     - IMAGETAG=skrjtech/python:debian-python3.9.16
+    build:
+      context: ../.docker
+      dockerfile: Dockerfile
     image: skrjtech/astvs:latest
     container_name: astvs
     hostname: astvs
@@ -20,11 +18,10 @@ services:
       - /dev/snd:/dev/snd
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      - ..:/ws
-      - ../DATABASE:/DATABASE
+      - ..:/ASTVSHome
       - pycharm_volume:/tmp/pycharm
       # For Remort
-      - $HOME/.Xauthority:/root/.Xauthority
+      # - $HOME/.Xauthority:/root/.Xauthority
       
     deploy:
       resources:

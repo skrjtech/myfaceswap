@@ -1,5 +1,4 @@
-ARG IMAGETAG
-FROM $IMAGETAG
+FROM skrjtech/python:debian-python3.9.16
 
 RUN apt-get update \
     && apt-get install -y locales locales-all \

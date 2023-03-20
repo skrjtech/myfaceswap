@@ -17,7 +17,7 @@ def GetChannels(capIdx) -> int:
     return -1
 
 class CaptureBase(object):
-    def __init__(self, capIdx) -> None:
+    def __init__(self, capIdx, plugin) -> None:
         CHANNELS = GetChannels(capIdx)
         if CHANNELS < 0:
             if type(capIdx) == str:
@@ -28,8 +28,11 @@ class CaptureBase(object):
         self.MAXWIDTH = int(self.Capture.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.MAXHEIGHT = int(self.Capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.MAXFRAMES = int(self.Capture.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.MAXFPS = int(self.Capture.get(cv2.CAP_PROP_FPS))
         self.MAXCHANNELS = CHANNELS
         self.Zeros = np.zeros((self.MAXWIDTH, self.MAXHEIGHT, self.MAXCHANNELS), dtype=np.uint8)
+
+        self.CaptureSink = cv2.VideoWriter(plugin, 0, self.MAXFPS, (self.MAXHEIGHT, self.MAXWIDTH), True)
     
     def isOpened(self):
         return self.Capture.isOpened()
@@ -42,6 +45,9 @@ class CaptureBase(object):
             return frame
         return self.Zeros.copy()
     
+    def Sink(self, frame):
+        self.CaptureSink.write(frame)
+    
     def imshow(self, frame, name: str='realtime'):
         cv2.imshow(name, frame)
         if cv2.waitKey(1) == ord('q'):
@@ -50,6 +56,7 @@ class CaptureBase(object):
             
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.Capture.release()
+        self.CaptureSink.release()
         cv2.destroyAllWindows()
 
 class AudioBase(object):
@@ -85,4 +92,5 @@ class AudioPlugin(AudioBase):
     def plugin(self):
         return self.Read()
 
-    
+if __name__ == '__main__':
+    CaptureBase(0)

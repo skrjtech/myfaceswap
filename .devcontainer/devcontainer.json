@@ -2,17 +2,5 @@
 	"name": "face and voice swap project",
 	"dockerComposeFile": "../.docker/docker-compose.yml",
 	"service": "astvs",
-	"workspaceFolder": "/ws",
-	"extensions": [
-		"ms-azuretools.vscode-docker",
-		"ms-python.python",
-		"ms-python.vscode-pylance"
-	],
-	"settings": { 
-        "terminal.integrated.defaultProfile.linux": "bash",
-        "python.pythonPath": "/usr/local/bin/python",
-        "python.linting.enabled": true,
-        "python.linting.pylintEnabled": true,
-        "python.linting.pylintPath": "/usr/local/bin/pylint"
-    }
+	"workspaceFolder": "/ASTVSHome"
 }

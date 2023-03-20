@@ -15,7 +15,7 @@ from utils.types import CaptureT
 class Resize(torchvision.transforms.Lambda):
     def __init__(self, WIDTH: int, HEIGHT: int):
         super(Resize, self).__init__(lambd=lambda x: cv2.resize(x, (WIDTH, HEIGHT)))
-    
+
 class Base(object):
     def __init__(self, args, WIDTH: int=320, HEIGHT=320) -> None:
         self.model = torchvision.models.segmentation.deeplabv3_resnet101(pretrained=True)

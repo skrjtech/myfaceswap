@@ -9,6 +9,10 @@ from CleanBack import VideoFileCleanBack
 from ReCycleGan import RecycleEval
 from concurrent.futures import ThreadPoolExecutor
 
+def InitWorkSpace(args):
+    args = InitWork(args)
+    print('作業ディレクトリ環境構築完了')
+
 def MakeData(args):
     args = MakedataArgs(args)
     VideoFileCleanBack(args)
@@ -54,7 +58,9 @@ def Realtime(args):
         print("実行終了します．")
 
 def main():
-    parse, makedata, training, eval, plugin = argumentParser()
+    parse, init_ws, makedata, training, eval, plugin = argumentParser()
+    
+    init_ws.set_defaults(handler=InitWorkSpace)
     makedata.set_defaults(handler=MakeData)
     training.set_defaults(handler=Train)
     eval.set_defaults(handler=Eval)
