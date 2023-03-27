@@ -1,10 +1,10 @@
 version: '3.9'
 services:
   astvs:
-    build:
-      context: ../.docker
-      dockerfile: Dockerfile
-    image: skrjtech/astvs:latest
+    # build:
+    #   context: ../.docker
+    #   dockerfile: Dockerfile
+    image: skrjtech/astvs
     container_name: astvs
     hostname: astvs
     tty: true
@@ -15,14 +15,12 @@ services:
     devices:
       - /dev/video0:/dev/video0
       - /dev/video1:/dev/video1
+      - /dev/video10:/dev/video10
       - /dev/snd:/dev/snd
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ..:/ASTVSHome
-      - pycharm_volume:/tmp/pycharm
-      # For Remort
-      # - $HOME/.Xauthority:/root/.Xauthority
-      
+
     deploy:
       resources:
         reservations:
@@ -30,18 +28,3 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-
-  pycharm:
-    image: skrjtech/pycharm:debian
-    container_name: pycharm
-    tty: true
-    restart: always
-    volumes:
-      - type: volume
-        source: pycharm_volume
-        target: /tmp/pycharm
-    depends_on:
-      - astvs
-
-volumes:
-  pycharm_volume:
